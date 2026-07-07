@@ -1,0 +1,33 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: 0 0% 7%;
+  --foreground: 0 0% 95%;
+  --card: 0 0% 11%;
+  --border: 0 0% 18%;
+  --accent: 262 83% 58%;
+  --muted: 0 0% 50%;
+  --radius: 0.75rem;
+  --font-sans: "Inter", system-ui, sans-serif;
+  --font-serif: "Source Serif 4", Georgia, serif;
+  --font-dyslexic: "Atkinson Hyperlegible", system-ui, sans-serif;
+}
+
+body {
+  background-color: hsl(var(--background));
+  color: hsl(var(--foreground));
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+.theme-default { --reader-bg: hsl(var(--background)); --reader-text: hsl(var(--foreground)); --reader-accent: hsl(var(--accent)); }
+.theme-paper { --reader-bg: #f4ecd8; --reader-text: #3a3226; --reader-accent: #8a5a2c; font-family: var(--font-serif); letter-spacing: 0.01em; line-height: 1.7; }
+.theme-night { --reader-bg: #000000; --reader-text: #d4d4d4; --reader-accent: #6b8afd; }
+
+.reader-surface { background-color: var(--reader-bg); color: var(--reader-text); transition: background-color 0.2s ease, color 0.2s ease; }
+.reader-column { max-width: 42rem; margin: 0 auto; }
+.font-pref-sans { font-family: var(--font-sans); }
+.font-pref-serif { font-family: var(--font-serif); }
+.font-pref-dyslexic { font-family: var(--font-dyslexic); }
