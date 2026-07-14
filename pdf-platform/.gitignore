@@ -6,3 +6,4 @@ out/
 *.log
 .DS_Store
 /prisma/migrations/.gitkeep
+tsconfig.tsbuildinfo

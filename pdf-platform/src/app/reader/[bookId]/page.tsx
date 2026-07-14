@@ -4,12 +4,13 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { ReaderClient } from "@/components/features/reader/reader-client";
 
-export default async function ReaderPage({ params }: { params: { bookId: string } }) {
+export default async function ReaderPage({ params }: { params: Promise<{ bookId: string }> }) {
+  const { bookId } = await params;
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session?.user) return notFound();
 
   const book = await prisma.book.findFirst({
-    where: { id: params.bookId, userId: session.user.id },
+    where: { id: bookId, userId: session.user.id },
     include: { progress: true },
   });
 
@@ -17,7 +18,7 @@ export default async function ReaderPage({ params }: { params: { bookId: string 
 
   // Update lastOpenedAt
   await prisma.book.update({
-    where: { id: params.bookId },
+    where: { id: bookId },
     data: { lastOpenedAt: new Date() },
   });
 

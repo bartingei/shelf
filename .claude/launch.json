@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "pdf-platform-dev",
+      "runtimeExecutable": "bash",
+      "runtimeArgs": ["-c", "cd pdf-platform && npm run dev"],
+      "port": 3000
+    }
+  ]
+}

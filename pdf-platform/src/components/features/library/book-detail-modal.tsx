@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { X, Trash2, Loader2 } from "lucide-react";
 import { CoverUpload } from "./cover-upload";
-import type { Book } from "@/types";
+import { GENRE_LABELS, type Book } from "@/types";
 
 interface BookDetailModalProps {
   book: Book;
@@ -61,8 +61,8 @@ export function BookDetailModal({ book, onClose, onUpdate, onDelete }: BookDetai
         <div className="mb-4 space-y-1 text-center">
           {book.author && <p className="text-sm text-muted">{book.author}</p>}
           {book.pageCount && <p className="text-xs text-muted">{book.pageCount} pages</p>}
-          <p className="text-xs capitalize text-muted">
-            {book.category?.toLowerCase() ?? "uncategorized"}
+          <p className="text-xs text-muted">
+            {GENRE_LABELS[book.genre] ?? "Uncategorized"}
           </p>
         </div>
 

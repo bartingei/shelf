@@ -1,26 +1,27 @@
-import Link from "next/link";
+import { cookies, headers } from "next/headers";
+import { auth } from "@/lib/auth";
+import { DashboardClient } from "@/components/features/dashboard/dashboard-client";
+import { LandingPage } from "@/components/features/marketing/landing-page";
 
-export default function HomePage() {
-  return (
-    <main className="flex min-h-screen flex-col items-center justify-center gap-6 bg-background px-4 text-center">
-      <h1 className="text-4xl font-semibold tracking-tight">Welcome back.</h1>
-      <p className="max-w-md text-muted">
-        Your library, your way. PDFs reimagined as a Netflix-style reading platform.
-      </p>
-      <div className="flex gap-3">
-        <Link
-          href="/library"
-          className="rounded-lg bg-accent px-5 py-2.5 text-sm font-medium text-white hover:opacity-90"
-        >
-          Continue Reading
-        </Link>
-        <Link
-          href="/login"
-          className="rounded-lg border border-border px-5 py-2.5 text-sm font-medium hover:bg-card"
-        >
-          Sign In
-        </Link>
-      </div>
-    </main>
-  );
+export const dynamic = "force-dynamic";
+
+export default async function HomePage() {
+  // Skip the DB round-trip entirely for the common case (anonymous visitor,
+  // no session cookie) — only hit the database when a cookie is actually present.
+  const hasSessionCookie = (await cookies()).has("better-auth.session_token");
+  const session = hasSessionCookie
+    ? await auth.api.getSession({ headers: await headers() })
+    : null;
+
+  // Authenticated → the app dashboard; otherwise the marketing landing page.
+  if (session?.user) {
+    return (
+      <DashboardClient
+        userName={session.user.name ?? session.user.email ?? ""}
+        userId={session.user.id}
+      />
+    );
+  }
+
+  return <LandingPage />;
 }

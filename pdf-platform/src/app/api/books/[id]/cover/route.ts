@@ -8,12 +8,13 @@ const supabaseAdmin = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
+export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   const session = await auth.api.getSession({ headers: req.headers });
   if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const book = await prisma.book.findFirst({
-    where: { id: params.id, userId: session.user.id },
+    where: { id, userId: session.user.id },
   });
   if (!book) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
@@ -22,13 +23,13 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   if (!file) return NextResponse.json({ error: "No file" }, { status: 400 });
 
   const ext = file.name.split(".").pop() ?? "jpg";
-  const filePath = `covers/${session.user.id}/${params.id}.${ext}`;
+  const filePath = `covers/${session.user.id}/${id}.${ext}`;
 
   // Delete any previous cover first
   await supabaseAdmin.storage.from("covers").remove([
-    `covers/${session.user.id}/${params.id}.jpg`,
-    `covers/${session.user.id}/${params.id}.png`,
-    `covers/${session.user.id}/${params.id}.webp`,
+    `covers/${session.user.id}/${id}.jpg`,
+    `covers/${session.user.id}/${id}.png`,
+    `covers/${session.user.id}/${id}.webp`,
   ]);
 
   const arrayBuffer = await file.arrayBuffer();
@@ -52,7 +53,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   const coverUrl = `${publicUrl}?t=${Date.now()}`;
 
   await prisma.book.update({
-    where: { id: params.id },
+    where: { id },
     data: { coverUrl },
   });
 
