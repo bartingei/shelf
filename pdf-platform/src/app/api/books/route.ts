@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
+import { classifyGenre } from "@/lib/genre-classifier";
 
 // GET /api/books?sort=recent|lastRead&favorite=true&limit=10
 export async function GET(req: NextRequest) {
@@ -35,11 +36,13 @@ export async function POST(req: NextRequest) {
   if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const body = await req.json();
-  const { title, author, fileUrl, pageCount, coverUrl } = body;
+  const { title, author, fileUrl, pageCount, coverUrl, textSample } = body;
 
   if (!title || !fileUrl) {
     return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
   }
+
+  const genre = await classifyGenre(`${title}\n${textSample ?? ""}`);
 
   const book = await prisma.book.create({
     data: {
@@ -49,6 +52,7 @@ export async function POST(req: NextRequest) {
       fileUrl,
       pageCount,
       coverUrl,
+      genre,
     },
   });
 

@@ -8,20 +8,13 @@ import { cn } from "@/lib/utils";
 
 type Tab = "display" | "bookmarks" | "notes" | "highlights";
 
-const COLORS = [
-  { value: "yellow", bg: "bg-yellow-300" },
-  { value: "green", bg: "bg-green-300" },
-  { value: "blue", bg: "bg-blue-300" },
-  { value: "pink", bg: "bg-pink-300" },
-];
-
 interface ReaderSidebarProps {
   bookId: string;
 }
 
 export function ReaderSidebar({ bookId }: ReaderSidebarProps) {
   const [tab, setTab] = useState<Tab>("display");
-  const { currentPage, setCurrentPage } = useReaderStore();
+  const { currentPage, setCurrentPage, highlights, setHighlights, removeHighlightLocal } = useReaderStore();
 
   // Bookmarks
   const [bookmarks, setBookmarks] = useState<any[]>([]);
@@ -32,12 +25,6 @@ export function ReaderSidebar({ bookId }: ReaderSidebarProps) {
   const [newNote, setNewNote] = useState("");
   const [addingNote, setAddingNote] = useState(false);
 
-  // Highlights
-  const [highlights, setHighlights] = useState<any[]>([]);
-  const [newHighlight, setNewHighlight] = useState("");
-  const [highlightColor, setHighlightColor] = useState("yellow");
-  const [addingHighlight, setAddingHighlight] = useState(false);
-
   const fetchAll = useCallback(async () => {
     const [bRes, nRes, hRes] = await Promise.all([
       fetch(`/api/bookmarks/${bookId}`).then((r) => r.json()),
@@ -47,7 +34,7 @@ export function ReaderSidebar({ bookId }: ReaderSidebarProps) {
     setBookmarks(bRes.bookmarks ?? []);
     setNotes(nRes.notes ?? []);
     setHighlights(hRes.highlights ?? []);
-  }, [bookId]);
+  }, [bookId, setHighlights]);
 
   useEffect(() => { fetchAll(); }, [fetchAll]);
 
@@ -95,30 +82,13 @@ export function ReaderSidebar({ bookId }: ReaderSidebarProps) {
     fetchAll();
   }
 
-  async function addHighlight() {
-    if (!newHighlight.trim()) return;
-    setAddingHighlight(true);
-    await fetch(`/api/highlights/${bookId}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        page: currentPage,
-        textContent: newHighlight,
-        colorTag: highlightColor,
-      }),
-    });
-    setNewHighlight("");
-    setAddingHighlight(false);
-    fetchAll();
-  }
-
   async function deleteHighlight(id: string) {
     await fetch(`/api/highlights/${bookId}`, {
       method: "DELETE",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ id }),
     });
-    fetchAll();
+    removeHighlightLocal(id);
   }
 
   const tabs = [
@@ -250,35 +220,9 @@ export function ReaderSidebar({ bookId }: ReaderSidebarProps) {
         {/* Highlights tab */}
         {tab === "highlights" && (
           <div className="space-y-2">
-            <div className="space-y-1">
-              <textarea
-                value={newHighlight}
-                onChange={(e) => setNewHighlight(e.target.value)}
-                placeholder={`Paste highlighted text from page ${currentPage}...`}
-                rows={3}
-                className="w-full rounded-md border border-border bg-background px-2 py-1.5 text-xs outline-none focus:border-accent resize-none"
-              />
-              <div className="flex items-center gap-1">
-                {COLORS.map((c) => (
-                  <button
-                    key={c.value}
-                    onClick={() => setHighlightColor(c.value)}
-                    className={cn(
-                      "h-5 w-5 rounded-full border-2",
-                      c.bg,
-                      highlightColor === c.value ? "border-foreground" : "border-transparent"
-                    )}
-                  />
-                ))}
-              </div>
-              <button
-                onClick={addHighlight}
-                disabled={addingHighlight || !newHighlight.trim()}
-                className="flex w-full items-center justify-center gap-1 rounded-md bg-accent py-1.5 text-xs font-medium text-white disabled:opacity-50"
-              >
-                <Plus size={12} /> Save highlight
-              </button>
-            </div>
+            <p className="text-xs text-muted">
+              Select text on the page and pick a color to save a highlight.
+            </p>
 
             {highlights.length === 0 ? (
               <p className="pt-2 text-center text-xs text-muted">No highlights yet</p>

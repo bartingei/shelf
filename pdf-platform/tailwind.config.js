@@ -13,6 +13,9 @@ module.exports = {
         card: "hsl(var(--card))",
         border: "hsl(var(--border))",
         accent: "hsl(var(--accent))",
+        "accent-bright": "hsl(var(--accent-bright))",
+        gold: "hsl(var(--gold))",
+        "gold-bright": "hsl(var(--gold-bright))",
         muted: "hsl(var(--muted))",
         // Reader-specific theme tokens — swapped via .theme-paper / .theme-night classes
         "reader-bg": "var(--reader-bg)",

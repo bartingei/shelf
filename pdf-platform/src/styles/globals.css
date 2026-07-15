@@ -3,15 +3,23 @@
 @tailwind utilities;
 
 :root {
-  --background: 0 0% 7%;
-  --foreground: 0 0% 95%;
-  --card: 0 0% 11%;
-  --border: 0 0% 18%;
-  --accent: 262 83% 58%;
-  --muted: 0 0% 50%;
+  /* Warm-tinted cinematic dark — a hair of brown mixed into near-black so the
+     editorial gold and the app purple sit in the same world. */
+  --background: 30 8% 5%;
+  --foreground: 40 20% 94%;
+  --card: 30 7% 10%;
+  --border: 32 8% 17%;
+  /* Interactive accent stays in the app's purple family, slightly warmed. */
+  --accent: 264 72% 64%;
+  --accent-bright: 266 84% 72%;
+  /* Editorial accent — warm tan/gold from the Folio direction. */
+  --gold: 32 46% 70%;
+  --gold-bright: 34 60% 78%;
+  --muted: 36 8% 60%;
   --radius: 0.75rem;
   --font-sans: "Inter", system-ui, sans-serif;
-  --font-serif: "Source Serif 4", Georgia, serif;
+  --font-display: "Fraunces", Georgia, "Times New Roman", serif;
+  --font-serif: "Fraunces", "Source Serif 4", Georgia, serif;
   --font-dyslexic: "Atkinson Hyperlegible", system-ui, sans-serif;
 }
 
@@ -22,12 +30,56 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+/* Editorial display serif for headings */
+.font-display { font-family: var(--font-display); }
+.text-gold { color: hsl(var(--gold)); }
+.bg-gold { background-color: hsl(var(--gold)); }
+.eyebrow {
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: hsl(var(--gold));
+}
+
 .theme-default { --reader-bg: hsl(var(--background)); --reader-text: hsl(var(--foreground)); --reader-accent: hsl(var(--accent)); }
 .theme-paper { --reader-bg: #f4ecd8; --reader-text: #3a3226; --reader-accent: #8a5a2c; font-family: var(--font-serif); letter-spacing: 0.01em; line-height: 1.7; }
 .theme-night { --reader-bg: #000000; --reader-text: #d4d4d4; --reader-accent: #6b8afd; }
 
 .reader-surface { background-color: var(--reader-bg); color: var(--reader-text); transition: background-color 0.2s ease, color 0.2s ease; }
 .reader-column { max-width: 42rem; margin: 0 auto; }
-.font-pref-sans { font-family: var(--font-sans); }
-.font-pref-serif { font-family: var(--font-serif); }
-.font-pref-dyslexic { font-family: var(--font-dyslexic); }
+
+/* Hide scrollbars on horizontal rails while keeping them scrollable */
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+.no-scrollbar::-webkit-scrollbar { display: none; }
+
+/* pdf.js text layer — trimmed to what plain selection/copy needs */
+.textLayer {
+  position: absolute;
+  inset: 0;
+  overflow: clip;
+  line-height: 1;
+  text-align: initial;
+  opacity: 1;
+  transform-origin: 0 0;
+}
+.textLayer span, .textLayer br {
+  color: transparent;
+  position: absolute;
+  white-space: pre;
+  cursor: text;
+  transform-origin: 0% 0%;
+}
+.textLayer ::selection {
+  background: rgba(0, 100, 255, 0.3);
+}
+.textLayer br::selection {
+  background: transparent;
+}
+.textLayer .endOfContent {
+  display: block;
+  position: absolute;
+  inset: 100% 0 0;
+  cursor: default;
+  user-select: none;
+}

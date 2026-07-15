@@ -8,9 +8,40 @@ import { cn } from "@/lib/utils";
 // PDF.js is loaded dynamically to avoid SSR issues
 async function getPdfJs() {
   const pdfjsLib = await import("pdfjs-dist");
-  pdfjsLib.GlobalWorkerOptions.workerSrc =
-    "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.10.38/pdf.worker.min.mjs";
+  pdfjsLib.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.mjs";
   return pdfjsLib;
+}
+
+// Pulls a short plain-text sample from the first couple pages, used for genre classification.
+async function extractTextSample(pdf: any): Promise<string> {
+  const pageCount = Math.min(pdf.numPages, 2);
+  const parts: string[] = [];
+  for (let i = 1; i <= pageCount; i++) {
+    const page = await pdf.getPage(i);
+    const content = await page.getTextContent();
+    parts.push(content.items.map((item: any) => item.str).join(" "));
+  }
+  return parts.join(" ").slice(0, 3000);
+}
+
+// Renders the first page to a canvas and returns it as a JPEG blob for use as the cover thumbnail.
+async function renderCoverThumbnail(pdf: any): Promise<Blob | null> {
+  const page = await pdf.getPage(1);
+  const baseViewport = page.getViewport({ scale: 1 });
+  const scale = 400 / baseViewport.width;
+  const viewport = page.getViewport({ scale });
+
+  const canvas = document.createElement("canvas");
+  canvas.width = viewport.width;
+  canvas.height = viewport.height;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return null;
+
+  await page.render({ canvasContext: ctx, viewport }).promise;
+
+  return new Promise((resolve) => {
+    canvas.toBlob((blob) => resolve(blob), "image/jpeg", 0.85);
+  });
 }
 
 interface UploadFile {
@@ -71,6 +102,8 @@ export function UploadModal({ userId, onClose, onSuccess }: UploadModalProps) {
       let title = item.file.name.replace(/\.pdf$/i, "");
       let author: string | undefined;
       let pageCount: number | undefined;
+      let coverBlob: Blob | null = null;
+      let textSample = "";
 
       try {
         const arrayBuffer = await item.file.arrayBuffer();
@@ -82,6 +115,8 @@ export function UploadModal({ userId, onClose, onSuccess }: UploadModalProps) {
           if (info.Title?.trim()) title = info.Title.trim();
           if (info.Author?.trim()) author = info.Author.trim();
         }
+        coverBlob = await renderCoverThumbnail(pdf).catch(() => null);
+        textSample = await extractTextSample(pdf).catch(() => "");
       } catch {
         // metadata extraction failure is non-fatal — use filename as title
       }
@@ -122,7 +157,7 @@ export function UploadModal({ userId, onClose, onSuccess }: UploadModalProps) {
       const res = await fetch("/api/books", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title, author, fileUrl: filePath, pageCount }),
+        body: JSON.stringify({ title, author, fileUrl: filePath, pageCount, textSample }),
       });
 
       if (!res.ok) {
@@ -133,6 +168,15 @@ export function UploadModal({ userId, onClose, onSuccess }: UploadModalProps) {
           )
         );
         continue;
+      }
+
+      const { book } = await res.json();
+
+      // Step 4: Set the extracted cover thumbnail (best-effort — a missing cover isn't fatal)
+      if (coverBlob) {
+        const coverForm = new FormData();
+        coverForm.append("file", coverBlob, "cover.jpg");
+        await fetch(`/api/books/${book.id}/cover`, { method: "POST", body: coverForm }).catch(() => null);
       }
 
       setFiles((prev) =>
@@ -252,11 +296,6 @@ export function UploadModal({ userId, onClose, onSuccess }: UploadModalProps) {
               : `Upload ${files.length > 0 ? files.length : ""} PDF${files.length !== 1 ? "s" : ""}`}
           </button>
         </div>
-
-        <p className="mt-3 text-center text-xs text-muted">
-          ⚠️ Make sure your Supabase Storage has a public bucket named{" "}
-          <code className="font-mono">books</code>
-        </p>
       </div>
     </div>
   );
