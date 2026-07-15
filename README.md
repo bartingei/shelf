@@ -4,6 +4,8 @@ A cinematic home for your PDFs. Upload your collection, let AI sort it into genr
 in a distraction-free viewer with highlights, notes, bookmarks, and reading progress synced
 to your account.
 
+The app itself lives in [`pdf-platform/`](pdf-platform/).
+
 ## Features
 
 - **Auth** — email/password and Google sign-in (Better Auth), with a landing page for
@@ -40,13 +42,20 @@ to your account.
 
 ## Setup
 
-1. **Install dependencies**
+1. **Clone and enter the app directory**
+
+   ```bash
+   git clone https://github.com/bartingei/shelf.git
+   cd shelf/pdf-platform
+   ```
+
+2. **Install dependencies**
 
    ```bash
    npm install
    ```
 
-2. **Configure environment variables**
+3. **Configure environment variables**
 
    ```bash
    cp .env.example .env
@@ -63,19 +72,19 @@ to your account.
    | `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY` / `SUPABASE_SERVICE_ROLE_KEY` | Your Supabase project's API settings |
    | `OPENAI_API_KEY` | [OpenAI platform](https://platform.openai.com/api-keys) — only needed for genre classification and AI reader tools |
 
-3. **Set up Supabase Storage**
+4. **Set up Supabase Storage**
 
    Create two storage buckets in your Supabase project:
    - `books` — private (PDF files are served through a signed-URL API route, not directly)
    - `covers` — public (cover thumbnails are read directly by the browser)
 
-4. **Run database migrations**
+5. **Run database migrations**
 
    ```bash
    npx prisma migrate dev
    ```
 
-5. **Start the dev server**
+6. **Start the dev server**
 
    ```bash
    npm run dev
@@ -84,6 +93,8 @@ to your account.
    Visit [http://localhost:3000](http://localhost:3000).
 
 ## Available scripts
+
+Run these from `pdf-platform/`:
 
 ```bash
 npm run dev          # start the dev server
@@ -98,25 +109,26 @@ npm run db:studio      # open Prisma Studio (browse the database)
 ## Project structure
 
 ```
-src/
-  app/
-    (auth)/           # login, signup — shared cross-fade transition layout
-    (dashboard)/       # signed-in home
-    library/            # book grid, genre filters, upload
-    reader/[bookId]/    # the PDF reader
-    api/                # REST routes: books, bookmarks, notes, highlights,
-                         # progress, upload, AI explain/summarize, auth
-  components/
-    ui/                  # shared components (top nav, etc.)
-    features/            # feature-scoped components (reader, library, dashboard, marketing)
-  lib/                   # prisma client, auth config, supabase client, genre classifier, utils
-  types/                 # shared TypeScript types
-  styles/                # globals.css — reader theme definitions live here
-prisma/
-  schema.prisma          # full data model
-  migrations/
-docs/
-  mvp-spec.md            # original feature spec + schema rationale
+pdf-platform/
+  src/
+    app/
+      (auth)/           # login, signup — shared cross-fade transition layout
+      (dashboard)/       # signed-in home
+      library/            # book grid, genre filters, upload
+      reader/[bookId]/    # the PDF reader
+      api/                # REST routes: books, bookmarks, notes, highlights,
+                           # progress, upload, AI explain/summarize, auth
+    components/
+      ui/                  # shared components (top nav, etc.)
+      features/            # feature-scoped components (reader, library, dashboard, marketing)
+    lib/                   # prisma client, auth config, supabase client, genre classifier, utils
+    types/                 # shared TypeScript types
+    styles/                # globals.css — reader theme definitions live here
+  prisma/
+    schema.prisma          # full data model
+    migrations/
+  docs/
+    mvp-spec.md            # original feature spec + schema rationale
 ```
 
 ## Notes
