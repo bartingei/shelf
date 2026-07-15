@@ -47,6 +47,11 @@ enum JobStatus {
   FAILED
 }
 
+enum Plan {
+  FREE
+  PRO
+}
+
 model User {
   id            String   @id @default(cuid())
   email         String   @unique
@@ -55,6 +60,7 @@ model User {
   name          String?
   image         String?
   avatarUrl     String?
+  plan          Plan     @default(FREE)
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 

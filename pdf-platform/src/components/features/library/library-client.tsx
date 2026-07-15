@@ -1,7 +1,9 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { Search } from "lucide-react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { Search, Sparkles } from "lucide-react";
 import { BookCard } from "./book-card";
 import { UploadModal } from "./upload-modal";
 import { TopNav } from "@/components/ui/top-nav";
@@ -16,11 +18,16 @@ interface LibraryClientProps {
 }
 
 export function LibraryClient({ userId, userName }: LibraryClientProps) {
+  const router = useRouter();
   const [books, setBooks] = useState<Book[]>([]);
   const [loading, setLoading] = useState(true);
   const [showUpload, setShowUpload] = useState(false);
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<"ALL" | Genre>("ALL");
+  const [plan, setPlan] = useState<"FREE" | "PRO">("FREE");
+  const [bookLimit, setBookLimit] = useState<number | null>(null);
+
+  const atLimit = plan === "FREE" && bookLimit !== null && books.length >= bookLimit;
 
   // Only show genre chips for genres the user actually has books in — no point
   // cluttering the bar with "Biography" when they have zero biographies.
@@ -35,12 +42,22 @@ export function LibraryClient({ userId, userName }: LibraryClientProps) {
       const res = await fetch("/api/books");
       const data = await res.json();
       setBooks(data.books ?? []);
+      setPlan(data.plan ?? "FREE");
+      setBookLimit(data.bookLimit ?? null);
     } finally {
       setLoading(false);
     }
   }, []);
 
   useEffect(() => { fetchBooks(); }, [fetchBooks]);
+
+  function handleUploadClick() {
+    if (atLimit) {
+      router.push("/upgrade");
+      return;
+    }
+    setShowUpload(true);
+  }
 
   const filtered = books.filter((b) => {
     const q = search.toLowerCase();
@@ -51,7 +68,17 @@ export function LibraryClient({ userId, userName }: LibraryClientProps) {
 
   return (
     <div className="min-h-screen bg-background">
-      <TopNav onUpload={() => setShowUpload(true)} overHero />
+      <TopNav onUpload={handleUploadClick} overHero />
+
+      {atLimit && (
+        <div className="flex items-center justify-center gap-3 bg-gold/15 px-6 py-2.5 text-sm text-gold">
+          <Sparkles size={14} />
+          You've used all {bookLimit} books on the Free plan.
+          <Link href="/upgrade" className="font-semibold underline underline-offset-2 hover:text-gold/80">
+            Upgrade for more storage
+          </Link>
+        </div>
+      )}
 
       {/* Cinematic banner */}
       <div className="relative h-[42vh] min-h-[300px] w-full overflow-hidden">
@@ -61,7 +88,12 @@ export function LibraryClient({ userId, userName }: LibraryClientProps) {
         <div className="relative mx-auto flex h-full max-w-[1600px] flex-col justify-end px-6 pb-10 lg:px-10">
           <span className="eyebrow">Your shelf</span>
           <h1 className="mt-3 font-display text-5xl font-semibold tracking-tight md:text-6xl">Library</h1>
-          <p className="mt-2 text-sm text-muted">{books.length} book{books.length === 1 ? "" : "s"} · every page, in one place.</p>
+          <p className="mt-2 text-sm text-muted">
+            {books.length}{bookLimit !== null ? ` of ${bookLimit}` : ""} book{books.length === 1 ? "" : "s"} · every page, in one place.
+            {plan === "FREE" && (
+              <Link href="/upgrade" className="ml-2 text-gold hover:underline">Upgrade</Link>
+            )}
+          </p>
         </div>
       </div>
 
@@ -120,7 +152,7 @@ export function LibraryClient({ userId, userName }: LibraryClientProps) {
           </div>
         ) : filtered.length === 0 ? (
           <div
-            onClick={() => setShowUpload(true)}
+            onClick={handleUploadClick}
             className="flex h-64 cursor-pointer flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-border transition-colors hover:border-gold/50"
           >
             <p className="font-display text-xl">Nothing on this shelf yet</p>

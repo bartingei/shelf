@@ -236,7 +236,7 @@ function StatsAndCta() {
           </h2>
           <p className="mx-auto mt-6 max-w-md text-muted">
             Join 50,000+ readers who've already moved their whole collection to Shelf.
-            Your first 25 books are free, no card needed.
+            Your first 10 books are free, no card needed.
           </p>
           <Link href="/signup" className="mt-10 inline-flex rounded-lg bg-foreground px-8 py-4 text-sm font-semibold text-background transition-transform hover:scale-[1.03]">
             Create your collection
