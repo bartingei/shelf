@@ -4,6 +4,7 @@ import { useState, useRef, useCallback } from "react";
 import { X, Upload, FileText, CheckCircle, AlertCircle, Loader2 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
+import { MAX_UPLOAD_BYTES, formatBytes } from "@/lib/constants";
 
 // PDF.js is loaded dynamically to avoid SSR issues
 async function getPdfJs() {
@@ -70,7 +71,11 @@ export function UploadModal({ userId, onClose, onSuccess }: UploadModalProps) {
     const pdfs = Array.from(newFiles).filter((f) => f.type === "application/pdf");
     setFiles((prev) => [
       ...prev,
-      ...pdfs.map((f) => ({ file: f, status: "pending" as const })),
+      ...pdfs.map((f): UploadFile =>
+        f.size > MAX_UPLOAD_BYTES
+          ? { file: f, status: "error", error: `Exceeds ${formatBytes(MAX_UPLOAD_BYTES)} limit (${formatBytes(f.size)})` }
+          : { file: f, status: "pending" }
+      ),
     ]);
   };
 
@@ -92,7 +97,7 @@ export function UploadModal({ userId, onClose, onSuccess }: UploadModalProps) {
 
     for (let i = 0; i < files.length; i++) {
       const item = files[i];
-      if (item.status === "done") continue;
+      if (item.status === "done" || item.status === "error") continue;
 
       // Step 1: Extract metadata with PDF.js
       setFiles((prev) =>
@@ -267,7 +272,7 @@ export function UploadModal({ userId, onClose, onSuccess }: UploadModalProps) {
                     </p>
                   )}
                 </div>
-                {item.status === "pending" && (
+                {(item.status === "pending" || item.status === "error") && (
                   <button onClick={() => removeFile(i)} className="text-muted hover:text-foreground">
                     <X size={14} />
                   </button>
