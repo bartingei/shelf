@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { supabaseAdmin } from "@/lib/supabase-admin";
+import { MAX_UPLOAD_BYTES, formatBytes } from "@/lib/constants";
 
 export async function POST(req: NextRequest) {
   const session = await auth.api.getSession({ headers: req.headers });
@@ -12,6 +13,13 @@ export async function POST(req: NextRequest) {
 
   if (!file || !filePath) {
     return NextResponse.json({ error: "Missing file or path" }, { status: 400 });
+  }
+
+  if (file.size > MAX_UPLOAD_BYTES) {
+    return NextResponse.json(
+      { error: `File exceeds the ${formatBytes(MAX_UPLOAD_BYTES)} upload limit` },
+      { status: 413 }
+    );
   }
 
   const arrayBuffer = await file.arrayBuffer();
