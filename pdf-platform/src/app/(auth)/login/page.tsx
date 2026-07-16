@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { signIn } from "@/lib/auth-client";
+import { signIn, sendVerificationEmail } from "@/lib/auth-client";
 import { IMAGES } from "@/lib/images";
 
 export default function LoginPage() {
@@ -12,22 +12,35 @@ export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [needsVerification, setNeedsVerification] = useState(false);
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
+  const [resent, setResent] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
+    setNeedsVerification(false);
+    setResent(false);
     setLoading(true);
 
     const { error: signInError } = await signIn.email({ email, password });
 
     setLoading(false);
     if (signInError) {
-      setError(signInError.message || "Could not sign in. Check your credentials.");
+      if (signInError.code === "EMAIL_NOT_VERIFIED") {
+        setNeedsVerification(true);
+      } else {
+        setError(signInError.message || "Could not sign in. Check your credentials.");
+      }
       return;
     }
     router.push("/library");
+  }
+
+  async function handleResend() {
+    await sendVerificationEmail({ email, callbackURL: "/library" });
+    setResent(true);
   }
 
   async function handleGoogleSignIn() {
@@ -77,6 +90,16 @@ export default function LoginPage() {
           <p className="mt-2 text-sm text-muted">Pick up right where you left off.</p>
 
           {error && <p className="mt-6 rounded-lg bg-red-500/10 px-3 py-2 text-xs text-red-400">{error}</p>}
+
+          {needsVerification && (
+            <p className="mt-6 rounded-lg bg-gold/10 px-3 py-2 text-xs text-gold">
+              Your email isn't verified yet. Check your inbox for the link, or{" "}
+              <button type="button" onClick={handleResend} className="font-semibold underline underline-offset-2">
+                resend it
+              </button>
+              {resent && " — sent!"}
+            </p>
+          )}
 
           <form onSubmit={handleSubmit} className="mt-8 space-y-3">
             <input
