@@ -5,4 +5,4 @@ export const authClient = createAuthClient({
 });
 
 // Convenience exports for use in client components
-export const { signIn, signUp, signOut, useSession, updateUser } = authClient;
+export const { signIn, signUp, signOut, useSession, updateUser, sendVerificationEmail } = authClient;
