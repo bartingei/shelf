@@ -1,32 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
-import { createClient } from "@supabase/supabase-js";
-
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
-
-export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;
-  const session = await auth.api.getSession({ headers: req.headers });
-  if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
-  const book = await prisma.book.findFirst({
-    where: { id, userId: session.user.id },
-    include: { progress: true },
-  });
-
-  if (!book) return NextResponse.json({ error: "Not found" }, { status: 404 });
-
-  await prisma.book.update({
-    where: { id },
-    data: { lastOpenedAt: new Date() },
-  });
-
-  return NextResponse.json({ book });
-}
+import { supabaseAdmin } from "@/lib/supabase-admin";
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;

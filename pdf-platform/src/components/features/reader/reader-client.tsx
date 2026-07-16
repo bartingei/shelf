@@ -6,7 +6,6 @@ import { AiPanel } from "./ai-panel";
 import { ReaderSidebar } from "./reader-sidebar";
 import { ProgressBar } from "./progress-bar";
 import { useProgressSync } from "@/hooks/use-progress-sync";
-import { useReaderStore } from "@/lib/reader-store";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 
@@ -20,7 +19,6 @@ export function ReaderClient({ bookId, bookTitle, initialPage }: ReaderClientPro
   useProgressSync(bookId);
 
   // B key to bookmark current page (triggers click on bookmark button via custom event)
-  const { currentPage } = useReaderStore();
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if (e.key === "b" || e.key === "B") {
@@ -29,7 +27,7 @@ export function ReaderClient({ bookId, bookTitle, initialPage }: ReaderClientPro
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [currentPage]);
+  }, []);
 
   return (
     <div className="flex h-screen flex-col bg-background">

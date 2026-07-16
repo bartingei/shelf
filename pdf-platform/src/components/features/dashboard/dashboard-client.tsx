@@ -165,19 +165,22 @@ export function DashboardClient({ userName, userId }: { userName: string; userId
   const [allBooks, setAllBooks] = useState<Book[]>([]);
   const [detailBook, setDetailBook] = useState<Book | null>(null);
 
+  // Fetch the whole library once (already ordered createdAt desc) and derive every
+  // rail from it client-side, instead of firing 4 separate /api/books requests
+  // that each re-run their own session check + Prisma queries for the same data.
   const fetchAll = async () => {
     setLoading(true);
     try {
-      const [lastRead, recent, fav, all] = await Promise.all([
-        fetch("/api/books?sort=lastRead&limit=10").then((r) => r.json()),
-        fetch("/api/books?sort=recent&limit=10").then((r) => r.json()),
-        fetch("/api/books?favorite=true&limit=10").then((r) => r.json()),
-        fetch("/api/books?limit=1000").then((r) => r.json()),
-      ]);
-      setContinueReading(lastRead.books ?? []);
-      setRecentlyAdded(recent.books ?? []);
-      setFavorites(fav.books ?? []);
-      setAllBooks(all.books ?? []);
+      const { books = [] }: { books: Book[] } = await fetch("/api/books?limit=1000").then((r) => r.json());
+      setAllBooks(books);
+      setRecentlyAdded(books.slice(0, 10));
+      setFavorites(books.filter((b) => b.isFavorite).slice(0, 10));
+      setContinueReading(
+        [...books]
+          .filter((b) => b.lastOpenedAt)
+          .sort((a, b) => new Date(b.lastOpenedAt!).getTime() - new Date(a.lastOpenedAt!).getTime())
+          .slice(0, 10)
+      );
     } catch (error) {
       console.error("Failed to fetch books:", error);
     } finally {
