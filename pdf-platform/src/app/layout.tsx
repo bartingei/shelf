@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Inter, Fraunces } from "next/font/google";
 import "@/styles/globals.css";
+import { SITE_URL, SITE_NAME, SITE_DESCRIPTION, SITE_KEYWORDS } from "@/lib/site";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -18,8 +19,38 @@ const fraunces = Fraunces({
 });
 
 export const metadata: Metadata = {
-  title: "Shelf — Your Reading Platform",
-  description: "A cinematic home for your PDFs — organize, annotate, and lose yourself in the long read.",
+  metadataBase: new URL(SITE_URL),
+  title: {
+    default: "Shelf — A Cinematic Home for Your PDFs",
+    template: `%s — ${SITE_NAME}`,
+  },
+  description: SITE_DESCRIPTION,
+  keywords: SITE_KEYWORDS,
+  applicationName: SITE_NAME,
+  alternates: {
+    canonical: "/",
+  },
+  openGraph: {
+    type: "website",
+    url: "/",
+    siteName: SITE_NAME,
+    title: "Shelf — A Cinematic Home for Your PDFs",
+    description: SITE_DESCRIPTION,
+    locale: "en_US",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Shelf — A Cinematic Home for Your PDFs",
+    description: SITE_DESCRIPTION,
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+    },
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
