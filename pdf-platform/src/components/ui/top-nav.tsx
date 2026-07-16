@@ -10,6 +10,7 @@ import { cn } from "@/lib/utils";
 const navItems = [
   { href: "/", label: "Dashboard" },
   { href: "/library", label: "Library" },
+  { href: "/settings", label: "Settings" },
 ];
 
 interface TopNavProps {

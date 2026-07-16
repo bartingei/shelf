@@ -1,5 +1,6 @@
 export type BookCategory = "EDUCATION" | "NOVEL" | "UNKNOWN";
 export type ReaderThemeName = "DEFAULT" | "PAPER" | "NIGHT";
+export type FontPreferenceName = "SANS" | "SERIF" | "DYSLEXIC";
 
 export type Genre =
   | "FICTION"

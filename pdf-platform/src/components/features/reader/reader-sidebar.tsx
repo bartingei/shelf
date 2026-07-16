@@ -232,7 +232,7 @@ export function ReaderSidebar({ bookId }: ReaderSidebarProps) {
         {tab === "highlights" && (
           <div className="space-y-2">
             <p className="text-xs text-muted">
-              Select text on the page and pick a color to save a highlight.
+              Turn on the highlighter above the page, pick a color, then select text to highlight it.
             </p>
 
             {highlights.length === 0 ? (
