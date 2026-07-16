@@ -39,7 +39,7 @@ export function LibraryClient({ userId, userName }: LibraryClientProps) {
   const fetchBooks = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/books");
+      const res = await fetch("/api/books?limit=1000");
       const data = await res.json();
       setBooks(data.books ?? []);
       setPlan(data.plan ?? "FREE");

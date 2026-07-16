@@ -25,31 +25,42 @@ export function ReaderSidebar({ bookId }: ReaderSidebarProps) {
   const [newNote, setNewNote] = useState("");
   const [addingNote, setAddingNote] = useState(false);
 
-  const fetchAll = useCallback(async () => {
-    const [bRes, nRes, hRes] = await Promise.all([
-      fetch(`/api/bookmarks/${bookId}`).then((r) => r.json()),
-      fetch(`/api/notes/${bookId}`).then((r) => r.json()),
-      fetch(`/api/highlights/${bookId}`).then((r) => r.json()),
-    ]);
-    setBookmarks(bRes.bookmarks ?? []);
-    setNotes(nRes.notes ?? []);
-    setHighlights(hRes.highlights ?? []);
-  }, [bookId, setHighlights]);
+  const fetchBookmarks = useCallback(async () => {
+    const { bookmarks = [] } = await fetch(`/api/bookmarks/${bookId}`).then((r) => r.json());
+    setBookmarks(bookmarks);
+  }, [bookId]);
 
-  useEffect(() => { fetchAll(); }, [fetchAll]);
+  const fetchNotes = useCallback(async () => {
+    const { notes = [] } = await fetch(`/api/notes/${bookId}`).then((r) => r.json());
+    setNotes(notes);
+  }, [bookId]);
+
+  useEffect(() => {
+    fetchBookmarks();
+    fetchNotes();
+    fetch(`/api/highlights/${bookId}`)
+      .then((r) => r.json())
+      .then(({ highlights = [] }) => setHighlights(highlights));
+  }, [bookId, fetchBookmarks, fetchNotes, setHighlights]);
 
   useEffect(() => {
     setIsBookmarked(bookmarks.some((b) => b.page === currentPage));
   }, [bookmarks, currentPage]);
 
-  async function toggleBookmark() {
+  const toggleBookmark = useCallback(async () => {
     await fetch(`/api/bookmarks/${bookId}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ page: currentPage, label: `Page ${currentPage}` }),
     });
-    fetchAll();
-  }
+    fetchBookmarks();
+  }, [bookId, currentPage, fetchBookmarks]);
+
+  // "B" shortcut (dispatched from ReaderClient) bookmarks the current page
+  useEffect(() => {
+    document.addEventListener("bookmark-current-page", toggleBookmark);
+    return () => document.removeEventListener("bookmark-current-page", toggleBookmark);
+  }, [toggleBookmark]);
 
   async function deleteBookmark(id: string) {
     await fetch(`/api/bookmarks/${bookId}`, {
@@ -57,7 +68,7 @@ export function ReaderSidebar({ bookId }: ReaderSidebarProps) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ id }),
     });
-    fetchAll();
+    fetchBookmarks();
   }
 
   async function addNote() {
@@ -70,7 +81,7 @@ export function ReaderSidebar({ bookId }: ReaderSidebarProps) {
     });
     setNewNote("");
     setAddingNote(false);
-    fetchAll();
+    fetchNotes();
   }
 
   async function deleteNote(id: string) {
@@ -79,7 +90,7 @@ export function ReaderSidebar({ bookId }: ReaderSidebarProps) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ id }),
     });
-    fetchAll();
+    fetchNotes();
   }
 
   async function deleteHighlight(id: string) {

@@ -77,11 +77,6 @@ export async function POST(req: NextRequest) {
     },
   });
 
-  // Queue categorization job
-  await prisma.processingJob.create({
-    data: { bookId: book.id, type: "CATEGORIZE" },
-  });
-
   return NextResponse.json({ book }, { status: 201 });
 }
 

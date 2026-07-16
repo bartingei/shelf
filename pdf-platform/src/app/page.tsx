@@ -2,6 +2,22 @@ import { cookies, headers } from "next/headers";
 import { auth } from "@/lib/auth";
 import { DashboardClient } from "@/components/features/dashboard/dashboard-client";
 import { LandingPage } from "@/components/features/marketing/landing-page";
+import { SITE_URL, SITE_NAME, SITE_DESCRIPTION } from "@/lib/site";
+
+const structuredData = {
+  "@context": "https://schema.org",
+  "@type": "WebApplication",
+  name: SITE_NAME,
+  url: SITE_URL,
+  description: SITE_DESCRIPTION,
+  applicationCategory: "UtilitiesApplication",
+  operatingSystem: "Any (web-based)",
+  offers: {
+    "@type": "Offer",
+    price: "0",
+    priceCurrency: "USD",
+  },
+};
 
 export const dynamic = "force-dynamic";
 
@@ -23,5 +39,14 @@ export default async function HomePage() {
     );
   }
 
-  return <LandingPage />;
+  return (
+    <>
+      <script
+        type="application/ld+json"
+        // eslint-disable-next-line react/no-danger
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
+      />
+      <LandingPage />
+    </>
+  );
 }

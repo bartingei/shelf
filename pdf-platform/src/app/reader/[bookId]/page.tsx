@@ -1,8 +1,13 @@
+import type { Metadata } from "next";
 import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { ReaderClient } from "@/components/features/reader/reader-client";
+
+export const metadata: Metadata = {
+  robots: { index: false, follow: false },
+};
 
 export default async function ReaderPage({ params }: { params: Promise<{ bookId: string }> }) {
   const { bookId } = await params;
