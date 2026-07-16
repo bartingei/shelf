@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState, useCallback } from "react";
-import { ChevronLeft, ChevronRight } from "lucide-react";
-import { useReaderStore, themeClassMap } from "@/lib/reader-store";
+import { ChevronLeft, ChevronRight, Trash2 } from "lucide-react";
+import { useReaderStore, themeClassMap, fontClassMap } from "@/lib/reader-store";
 import { cn } from "@/lib/utils";
 import { HIGHLIGHT_COLORS } from "@/lib/highlight-colors";
 import type { HighlightRect } from "@/types";
@@ -21,34 +21,37 @@ interface PdfViewerProps {
   onPageChange?: (page: number, total: number) => void;
 }
 
-interface PendingSelection {
-  text: string;
-  rects: HighlightRect[];
-  toolbarX: number;
-  toolbarY: number;
+interface HighlightPopover {
+  id: string;
+  x: number;
+  y: number;
 }
 
 export function PdfViewer({ bookId, initialPage = 1, onPageChange }: PdfViewerProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const pageBoxRef = useRef<HTMLDivElement>(null);
   const textLayerRef = useRef<HTMLDivElement>(null);
-  const toolbarRef = useRef<HTMLDivElement>(null);
+  const popoverRef = useRef<HTMLDivElement>(null);
   const renderTaskRef = useRef<{ cancel: () => void } | null>(null);
   const textLayerTaskRef = useRef<{ cancel: () => void } | null>(null);
   const [pdfDoc, setPdfDoc] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [pageSize, setPageSize] = useState<{ width: number; height: number } | null>(null);
-  const [pendingSelection, setPendingSelection] = useState<PendingSelection | null>(null);
+  const [highlightPopover, setHighlightPopover] = useState<HighlightPopover | null>(null);
 
   const {
     theme,
+    font,
     currentPage,
     totalPages,
     setCurrentPage,
     setTotalPages,
     highlights,
     addHighlightLocal,
+    removeHighlightLocal,
+    highlightMode,
+    activeHighlightColor,
   } = useReaderStore();
 
   // Load PDF from our proxy API (bypasses CORS)
@@ -94,7 +97,7 @@ export function PdfViewer({ bookId, initialPage = 1, onPageChange }: PdfViewerPr
       textLayerTaskRef.current = null;
     }
     textLayerRef.current.replaceChildren();
-    setPendingSelection(null);
+    setHighlightPopover(null);
 
     let cancelled = false;
 
@@ -158,19 +161,36 @@ export function PdfViewer({ bookId, initialPage = 1, onPageChange }: PdfViewerPr
     return () => { cancelled = true; };
   }, [pdfDoc, currentPage, onPageChange]);
 
-  // Capture text selections made on the page and offer to save them as highlights
-  useEffect(() => {
-    function handleSelectionEnd(e: MouseEvent | TouchEvent) {
-      // Let clicks inside the color-picker toolbar reach their own onClick handlers
-      if (toolbarRef.current && e.target instanceof Node && toolbarRef.current.contains(e.target)) {
-        return;
+  async function createHighlight(text: string, rects: HighlightRect[]) {
+    try {
+      const res = await fetch(`/api/highlights/${bookId}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          page: currentPage,
+          textContent: text,
+          colorTag: activeHighlightColor,
+          rects,
+        }),
+      });
+      if (res.ok) {
+        const { highlight } = await res.json();
+        addHighlightLocal(highlight);
       }
+    } finally {
+      window.getSelection()?.removeAllRanges();
+    }
+  }
 
+  // While the highlighter tool is active, capture text selections and
+  // highlight them instantly in the chosen color — no extra popup/click.
+  // When inactive, selection is left alone for normal copy/paste.
+  useEffect(() => {
+    if (!highlightMode) return;
+
+    function handleSelectionEnd() {
       const selection = window.getSelection();
-      if (!selection || selection.isCollapsed || selection.rangeCount === 0) {
-        setPendingSelection(null);
-        return;
-      }
+      if (!selection || selection.isCollapsed || selection.rangeCount === 0) return;
 
       const textLayerEl = textLayerRef.current;
       const pageBoxEl = pageBoxRef.current;
@@ -193,13 +213,7 @@ export function PdfViewer({ bookId, initialPage = 1, onPageChange }: PdfViewerPr
         height: r.height / boxRect.height,
       }));
 
-      const last = clientRects[clientRects.length - 1];
-      setPendingSelection({
-        text,
-        rects,
-        toolbarX: last.left - boxRect.left + last.width / 2,
-        toolbarY: last.top - boxRect.top + last.height + 8,
-      });
+      createHighlight(text, rects);
     }
 
     document.addEventListener("mouseup", handleSelectionEnd);
@@ -208,29 +222,29 @@ export function PdfViewer({ bookId, initialPage = 1, onPageChange }: PdfViewerPr
       document.removeEventListener("mouseup", handleSelectionEnd);
       document.removeEventListener("touchend", handleSelectionEnd);
     };
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [highlightMode, activeHighlightColor, currentPage]);
 
-  async function createHighlight(colorTag: string) {
-    if (!pendingSelection) return;
-    try {
-      const res = await fetch(`/api/highlights/${bookId}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          page: currentPage,
-          textContent: pendingSelection.text,
-          colorTag,
-          rects: pendingSelection.rects,
-        }),
-      });
-      if (res.ok) {
-        const { highlight } = await res.json();
-        addHighlightLocal(highlight);
+  // Dismiss the remove-highlight popover on outside click
+  useEffect(() => {
+    if (!highlightPopover) return;
+    function onClick(e: MouseEvent) {
+      if (popoverRef.current && e.target instanceof Node && !popoverRef.current.contains(e.target)) {
+        setHighlightPopover(null);
       }
-    } finally {
-      window.getSelection()?.removeAllRanges();
-      setPendingSelection(null);
     }
+    document.addEventListener("mousedown", onClick);
+    return () => document.removeEventListener("mousedown", onClick);
+  }, [highlightPopover]);
+
+  async function removeHighlight(id: string) {
+    setHighlightPopover(null);
+    await fetch(`/api/highlights/${bookId}`, {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id }),
+    });
+    removeHighlightLocal(id);
   }
 
   // Keyboard navigation
@@ -254,7 +268,7 @@ export function PdfViewer({ bookId, initialPage = 1, onPageChange }: PdfViewerPr
   const pageHighlights = highlights.filter((h) => h.page === currentPage && h.rects?.length);
 
   return (
-    <div className={cn("reader-surface flex flex-1 flex-col overflow-hidden", themeClassMap[theme])}>
+    <div className={cn("reader-surface flex flex-1 flex-col overflow-hidden", themeClassMap[theme], fontClassMap[font])}>
       {/* Scrollable page area */}
       <div className="flex flex-1 flex-col items-center overflow-y-auto px-4 py-8">
         <div className="reader-column w-full">
@@ -271,18 +285,29 @@ export function PdfViewer({ bookId, initialPage = 1, onPageChange }: PdfViewerPr
 
           <div
             ref={pageBoxRef}
-            className={cn("relative mx-auto shadow-md", loading && "hidden")}
+            className={cn("relative mx-auto shadow-md", loading && "hidden", highlightMode && "cursor-crosshair")}
             style={pageSize ? { width: pageSize.width, height: pageSize.height } : undefined}
           >
             <canvas ref={canvasRef} className="block" />
 
-            {/* Saved highlights for this page */}
+            {/* Saved highlights for this page — each rect is individually
+                clickable (pointer-events-auto) while the wrapper stays
+                pass-through so clicks between highlights still reach the
+                text layer underneath. */}
             <div className="pointer-events-none absolute inset-0">
               {pageHighlights.map((h) =>
                 h.rects!.map((r, i) => (
                   <div
                     key={`${h.id}-${i}`}
-                    className="absolute rounded-sm"
+                    onClick={(e) => {
+                      const boxRect = pageBoxRef.current!.getBoundingClientRect();
+                      setHighlightPopover({
+                        id: h.id,
+                        x: e.clientX - boxRect.left,
+                        y: r.y * boxRect.height + r.height * boxRect.height + 8,
+                      });
+                    }}
+                    className="pointer-events-auto absolute cursor-pointer rounded-sm"
                     style={{
                       left: `${r.x * 100}%`,
                       top: `${r.y * 100}%`,
@@ -301,21 +326,19 @@ export function PdfViewer({ bookId, initialPage = 1, onPageChange }: PdfViewerPr
             {/* Real, selectable/copyable text */}
             <div ref={textLayerRef} className="textLayer" />
 
-            {/* Color picker for a pending selection */}
-            {pendingSelection && (
+            {/* Remove-highlight popover */}
+            {highlightPopover && (
               <div
-                ref={toolbarRef}
-                className="absolute z-10 flex -translate-x-1/2 items-center gap-1.5 rounded-lg border border-border bg-card px-2 py-1.5 shadow-lg"
-                style={{ left: pendingSelection.toolbarX, top: pendingSelection.toolbarY }}
+                ref={popoverRef}
+                className="absolute z-10 -translate-x-1/2 rounded-lg border border-border bg-card px-2 py-1.5 shadow-lg"
+                style={{ left: highlightPopover.x, top: highlightPopover.y }}
               >
-                {HIGHLIGHT_COLORS.map((c) => (
-                  <button
-                    key={c.value}
-                    onClick={() => createHighlight(c.value)}
-                    title={`Highlight ${c.value}`}
-                    className={cn("h-5 w-5 rounded-full border border-black/10 hover:scale-110", c.swatchClass)}
-                  />
-                ))}
+                <button
+                  onClick={() => removeHighlight(highlightPopover.id)}
+                  className="flex items-center gap-1.5 whitespace-nowrap text-xs text-red-400 hover:text-red-300"
+                >
+                  <Trash2 size={12} /> Remove highlight
+                </button>
               </div>
             )}
           </div>

@@ -5,6 +5,7 @@ import { X, Upload, FileText, CheckCircle, AlertCircle, Loader2 } from "lucide-r
 import { supabase } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
 import { MAX_UPLOAD_BYTES, formatBytes } from "@/lib/constants";
+import { useToast } from "@/components/ui/toast";
 
 // PDF.js is loaded dynamically to avoid SSR issues
 async function getPdfJs() {
@@ -65,6 +66,7 @@ export function UploadModal({ userId, onClose, onSuccess }: UploadModalProps) {
   const [dragging, setDragging] = useState(false);
   const [uploading, setUploading] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const { toast } = useToast();
 
   const addFiles = (newFiles: FileList | null) => {
     if (!newFiles) return;
@@ -187,6 +189,7 @@ export function UploadModal({ userId, onClose, onSuccess }: UploadModalProps) {
       setFiles((prev) =>
         prev.map((f, idx) => (idx === i ? { ...f, status: "done" } : f))
       );
+      toast(`"${title}" has been added to your library`);
     }
 
     setUploading(false);

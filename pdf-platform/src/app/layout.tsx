@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
-import { Inter, Fraunces } from "next/font/google";
+import { Inter, Fraunces, Atkinson_Hyperlegible } from "next/font/google";
 import "@/styles/globals.css";
 import { SITE_URL, SITE_NAME, SITE_DESCRIPTION, SITE_KEYWORDS } from "@/lib/site";
+import { ToastProvider } from "@/components/ui/toast";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -16,6 +17,15 @@ const fraunces = Fraunces({
   display: "swap",
   style: ["normal", "italic"],
   weight: ["400", "500", "600", "700"],
+});
+
+// Reader "dyslexic-friendly" font option — --font-dyslexic was already
+// declared in globals.css but never actually loaded anywhere.
+const atkinson = Atkinson_Hyperlegible({
+  subsets: ["latin"],
+  variable: "--font-dyslexic",
+  display: "swap",
+  weight: ["400", "700"],
 });
 
 export const metadata: Metadata = {
@@ -58,8 +68,10 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${inter.variable} ${fraunces.variable}`}>
-      <body>{children}</body>
+    <html lang="en" className={`${inter.variable} ${fraunces.variable} ${atkinson.variable}`}>
+      <body>
+        <ToastProvider>{children}</ToastProvider>
+      </body>
     </html>
   );
 }

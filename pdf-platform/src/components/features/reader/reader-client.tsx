@@ -6,8 +6,11 @@ import { AiPanel } from "./ai-panel";
 import { ReaderSidebar } from "./reader-sidebar";
 import { ProgressBar } from "./progress-bar";
 import { useProgressSync } from "@/hooks/use-progress-sync";
+import { useReaderStore } from "@/lib/reader-store";
+import { HIGHLIGHT_COLORS } from "@/lib/highlight-colors";
+import { cn } from "@/lib/utils";
 import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Highlighter } from "lucide-react";
 
 interface ReaderClientProps {
   bookId: string;
@@ -17,6 +20,7 @@ interface ReaderClientProps {
 
 export function ReaderClient({ bookId, bookTitle, initialPage }: ReaderClientProps) {
   useProgressSync(bookId);
+  const { highlightMode, setHighlightMode, activeHighlightColor, setActiveHighlightColor, setTheme, setFont } = useReaderStore();
 
   // B key to bookmark current page (triggers click on bookmark button via custom event)
   useEffect(() => {
@@ -29,6 +33,18 @@ export function ReaderClient({ bookId, bookTitle, initialPage }: ReaderClientPro
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
+  // Apply the user's saved reader defaults (theme/font) once, on open.
+  useEffect(() => {
+    fetch("/api/settings")
+      .then((r) => r.json())
+      .then(({ readerTheme, fontPreference }) => {
+        if (readerTheme) setTheme(readerTheme);
+        if (fontPreference) setFont(fontPreference);
+      })
+      .catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   return (
     <div className="flex h-screen flex-col bg-background">
       {/* Top bar */}
@@ -36,7 +52,39 @@ export function ReaderClient({ bookId, bookTitle, initialPage }: ReaderClientPro
         <Link href="/library" className="text-muted hover:text-foreground">
           <ArrowLeft size={18} />
         </Link>
-        <span className="text-sm font-medium truncate">{bookTitle}</span>
+        <span className="flex-1 truncate text-sm font-medium">{bookTitle}</span>
+
+        <button
+          onClick={() => setHighlightMode(!highlightMode)}
+          title={highlightMode ? "Highlighter is on — select text to highlight" : "Turn on the highlighter"}
+          className={cn(
+            "flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors",
+            highlightMode
+              ? "border-gold bg-gold/15 text-gold"
+              : "border-border text-muted hover:border-foreground/40 hover:text-foreground"
+          )}
+        >
+          <Highlighter size={14} />
+          Highlighter
+          {highlightMode && <span className="h-1.5 w-1.5 rounded-full bg-gold" />}
+        </button>
+
+        {highlightMode && (
+          <div className="flex items-center gap-1.5 rounded-full border border-border bg-background px-2 py-1.5">
+            {HIGHLIGHT_COLORS.map((c) => (
+              <button
+                key={c.value}
+                onClick={() => setActiveHighlightColor(c.value)}
+                title={`Highlight color: ${c.value}`}
+                className={cn(
+                  "h-5 w-5 rounded-full border hover:scale-110",
+                  c.swatchClass,
+                  activeHighlightColor === c.value ? "border-foreground ring-2 ring-foreground/30" : "border-black/10"
+                )}
+              />
+            ))}
+          </div>
+        )}
       </div>
 
       <div className="flex flex-1 overflow-hidden">
