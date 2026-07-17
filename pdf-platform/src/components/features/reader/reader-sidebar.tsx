@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { Bookmark, FileText, Highlighter, Palette, Trash2, Plus, BookMarked } from "lucide-react";
+import { Bookmark, FileText, Highlighter, Palette, Trash2, Plus, BookMarked, X } from "lucide-react";
 import { useReaderStore } from "@/lib/reader-store";
 import { ThemeSwitcher } from "./theme-switcher";
 import { cn } from "@/lib/utils";
@@ -10,9 +10,11 @@ type Tab = "display" | "bookmarks" | "notes" | "highlights";
 
 interface ReaderSidebarProps {
   bookId: string;
+  open: boolean;
+  onClose: () => void;
 }
 
-export function ReaderSidebar({ bookId }: ReaderSidebarProps) {
+export function ReaderSidebar({ bookId, open, onClose }: ReaderSidebarProps) {
   const [tab, setTab] = useState<Tab>("display");
   const { currentPage, setCurrentPage, highlights, setHighlights, removeHighlightLocal } = useReaderStore();
 
@@ -110,9 +112,24 @@ export function ReaderSidebar({ bookId }: ReaderSidebarProps) {
   ];
 
   return (
-    <aside className="flex h-full w-52 shrink-0 flex-col border-r border-border bg-card">
-      {/* Tab bar */}
-      <div className="flex border-b border-border">
+    <>
+      {open && (
+        <div className="fixed inset-0 z-40 bg-black/50 lg:hidden" onClick={onClose} aria-hidden />
+      )}
+      <aside
+        className={cn(
+          "fixed inset-y-0 left-0 z-50 flex w-72 flex-col border-r border-border bg-card transition-transform duration-200 lg:static lg:z-auto lg:w-52 lg:shrink-0 lg:translate-x-0",
+          open ? "translate-x-0" : "-translate-x-full"
+        )}
+      >
+        <div className="flex items-center justify-between border-b border-border px-3 py-2 lg:hidden">
+          <span className="text-sm font-medium">Reader tools</span>
+          <button onClick={onClose} className="text-muted hover:text-foreground">
+            <X size={18} />
+          </button>
+        </div>
+        {/* Tab bar */}
+        <div className="flex border-b border-border">
         {tabs.map((t) => (
           <button
             key={t.id}
@@ -271,6 +288,7 @@ export function ReaderSidebar({ bookId }: ReaderSidebarProps) {
           </div>
         )}
       </div>
-    </aside>
+      </aside>
+    </>
   );
 }
