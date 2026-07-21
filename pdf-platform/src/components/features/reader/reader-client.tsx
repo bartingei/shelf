@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { PdfViewer } from "./pdf-viewer";
 import { AiPanel } from "./ai-panel";
 import { ReaderSidebar } from "./reader-sidebar";
@@ -10,7 +10,7 @@ import { useReaderStore } from "@/lib/reader-store";
 import { HIGHLIGHT_COLORS } from "@/lib/highlight-colors";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
-import { ArrowLeft, Highlighter } from "lucide-react";
+import { ArrowLeft, Highlighter, PanelLeft, Sparkles } from "lucide-react";
 
 interface ReaderClientProps {
   bookId: string;
@@ -21,6 +21,12 @@ interface ReaderClientProps {
 export function ReaderClient({ bookId, bookTitle, initialPage }: ReaderClientProps) {
   useProgressSync(bookId);
   const { highlightMode, setHighlightMode, activeHighlightColor, setActiveHighlightColor, setTheme, setFont } = useReaderStore();
+
+  // On mobile/tablet the reader tools and AI panel are off-canvas drawers,
+  // toggled from the top bar, instead of fixed columns that would otherwise
+  // squeeze the PDF itself out of a narrow viewport entirely.
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  const [mobileAiOpen, setMobileAiOpen] = useState(false);
 
   // B key to bookmark current page (triggers click on bookmark button via custom event)
   useEffect(() => {
@@ -52,6 +58,15 @@ export function ReaderClient({ bookId, bookTitle, initialPage }: ReaderClientPro
         <Link href="/library" className="text-muted hover:text-foreground">
           <ArrowLeft size={18} />
         </Link>
+
+        <button
+          onClick={() => setMobileSidebarOpen(true)}
+          title="Reader tools"
+          className="text-muted hover:text-foreground lg:hidden"
+        >
+          <PanelLeft size={18} />
+        </button>
+
         <span className="flex-1 truncate text-sm font-medium">{bookTitle}</span>
 
         <button
@@ -85,19 +100,25 @@ export function ReaderClient({ bookId, bookTitle, initialPage }: ReaderClientPro
             ))}
           </div>
         )}
+
+        <button
+          onClick={() => setMobileAiOpen(true)}
+          title="AI Tools"
+          className="text-muted hover:text-foreground lg:hidden"
+        >
+          <Sparkles size={18} />
+        </button>
       </div>
 
       <div className="flex flex-1 overflow-hidden">
         {/* Left sidebar — tabbed: Display, Bookmarks, Notes, Highlights */}
-        <ReaderSidebar bookId={bookId} />
+        <ReaderSidebar bookId={bookId} open={mobileSidebarOpen} onClose={() => setMobileSidebarOpen(false)} />
 
         {/* PDF viewer */}
         <PdfViewer bookId={bookId} initialPage={initialPage} />
 
         {/* Right sidebar — AI */}
-        <div className="w-60 shrink-0">
-          <AiPanel />
-        </div>
+        <AiPanel open={mobileAiOpen} onClose={() => setMobileAiOpen(false)} />
       </div>
 
       {/* Bottom progress bar */}

@@ -268,7 +268,7 @@ export function PdfViewer({ bookId, initialPage = 1, onPageChange }: PdfViewerPr
   const pageHighlights = highlights.filter((h) => h.page === currentPage && h.rects?.length);
 
   return (
-    <div className={cn("reader-surface flex flex-1 flex-col overflow-hidden", themeClassMap[theme], fontClassMap[font])}>
+    <div className={cn("reader-surface flex min-w-0 flex-1 flex-col overflow-hidden", themeClassMap[theme], fontClassMap[font])}>
       {/* Scrollable page area */}
       <div className="flex flex-1 flex-col items-center overflow-y-auto px-4 py-8">
         <div className="reader-column w-full">

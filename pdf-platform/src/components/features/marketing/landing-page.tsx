@@ -255,6 +255,7 @@ function Footer() {
         <Link href="/" className="font-display text-xl italic text-foreground">Shelf<span className="text-gold">.</span></Link>
         <p>© {new Date().getFullYear()} Shelf. A cinematic home for long reads.</p>
         <div className="flex gap-6">
+          <Link href="/faq" className="hover:text-foreground">FAQ</Link>
           <Link href="/login" className="hover:text-foreground">Sign in</Link>
           <Link href="/signup" className="hover:text-foreground">Get started</Link>
         </div>
