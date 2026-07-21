@@ -5,6 +5,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { SettingsClient } from "@/components/features/settings/settings-client";
 import { FREE_PLAN_BOOK_LIMIT } from "@/lib/constants";
+import { getEffectivePlan } from "@/lib/plan";
 
 export const metadata: Metadata = {
   title: "Settings",
@@ -15,9 +16,9 @@ export default async function SettingsPage() {
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session?.user) redirect("/login");
 
-  const [settings, user, bookCount] = await Promise.all([
+  const [settings, { plan, subscription }, bookCount] = await Promise.all([
     prisma.userSettings.findUnique({ where: { userId: session.user.id } }),
-    prisma.user.findUnique({ where: { id: session.user.id }, select: { plan: true } }),
+    getEffectivePlan(session.user.id),
     prisma.book.count({ where: { userId: session.user.id } }),
   ]);
 
@@ -27,9 +28,10 @@ export default async function SettingsPage() {
       email={session.user.email}
       readerTheme={settings?.readerTheme ?? "DEFAULT"}
       fontPreference={settings?.fontPreference ?? "SANS"}
-      plan={user?.plan ?? "FREE"}
+      plan={plan}
       bookCount={bookCount}
-      bookLimit={user?.plan === "PRO" ? null : FREE_PLAN_BOOK_LIMIT}
+      bookLimit={plan === "PRO" ? null : FREE_PLAN_BOOK_LIMIT}
+      subscriptionExpiresAt={plan === "PRO" ? subscription?.currentPeriodEnd.toISOString() ?? null : null}
     />
   );
 }

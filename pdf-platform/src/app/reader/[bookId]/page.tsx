@@ -4,6 +4,8 @@ import { notFound } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { ReaderClient } from "@/components/features/reader/reader-client";
+import { LockedBookScreen } from "@/components/features/reader/locked-book-screen";
+import { isBookLocked } from "@/lib/plan";
 
 export const metadata: Metadata = {
   robots: { index: false, follow: false },
@@ -20,6 +22,10 @@ export default async function ReaderPage({ params }: { params: Promise<{ bookId:
   });
 
   if (!book) return notFound();
+
+  if (await isBookLocked(session.user.id, bookId)) {
+    return <LockedBookScreen title={book.title} />;
+  }
 
   // Update lastOpenedAt
   await prisma.book.update({

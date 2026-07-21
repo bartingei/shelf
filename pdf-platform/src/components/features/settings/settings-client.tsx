@@ -17,6 +17,7 @@ interface SettingsClientProps {
   plan: "FREE" | "PRO";
   bookCount: number;
   bookLimit: number | null;
+  subscriptionExpiresAt: string | null;
 }
 
 const THEMES: { value: ReaderThemeName; label: string }[] = [
@@ -39,6 +40,7 @@ export function SettingsClient({
   plan,
   bookCount,
   bookLimit,
+  subscriptionExpiresAt,
 }: SettingsClientProps) {
   const { toast } = useToast();
 
@@ -174,19 +176,32 @@ export function SettingsClient({
         <section className="mt-6 rounded-2xl border border-border bg-card p-6">
           <h2 className="flex items-center gap-2 font-display text-lg font-semibold">
             Plan & billing
-            <span className="rounded-full border border-gold/40 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-gold">
-              Coming soon
-            </span>
+            {plan === "PRO" && (
+              <span className="rounded-full border border-gold/40 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-gold">
+                Pro
+              </span>
+            )}
           </h2>
           <p className="mt-2 flex items-center gap-2 text-sm text-foreground/80">
             <Sparkles size={14} className="text-gold" />
-            {plan === "PRO" ? "Pro plan" : "Free plan"}
+            {plan === "PRO" ? "Shelf Pro" : "Free plan"}
             {bookLimit !== null && ` · ${bookCount} of ${bookLimit} books`}
           </p>
-          <p className="mt-3 text-sm text-muted">
-            Billing isn't wired up yet.{" "}
-            <Link href="/upgrade" className="text-gold hover:underline">See what Pro will unlock</Link>.
-          </p>
+          {plan === "PRO" && subscriptionExpiresAt ? (
+            <p className="mt-3 text-sm text-muted">
+              Renews or ends on{" "}
+              {new Date(subscriptionExpiresAt).toLocaleDateString("en-KE", {
+                year: "numeric",
+                month: "long",
+                day: "numeric",
+              })}
+              . <Link href="/upgrade" className="text-gold hover:underline">Manage or renew</Link>.
+            </p>
+          ) : (
+            <p className="mt-3 text-sm text-muted">
+              <Link href="/upgrade" className="text-gold hover:underline">Upgrade to Shelf Pro</Link> for unlimited books, paid via M-Pesa.
+            </p>
+          )}
         </section>
       </div>
     </div>

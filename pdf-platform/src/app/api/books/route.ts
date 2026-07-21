@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { classifyGenre } from "@/lib/genre-classifier";
 import { FREE_PLAN_BOOK_LIMIT } from "@/lib/constants";
+import { getEffectivePlan, getLockedBookIdsForPlan } from "@/lib/plan";
 
 // GET /api/books?sort=recent|lastRead&favorite=true&limit=10
 export async function GET(req: NextRequest) {
@@ -14,7 +15,9 @@ export async function GET(req: NextRequest) {
   const favorite = searchParams.get("favorite") === "true";
   const limit = parseInt(searchParams.get("limit") || "50");
 
-  const [books, totalCount, user] = await Promise.all([
+  const { plan } = await getEffectivePlan(session.user.id);
+
+  const [books, totalCount, lockedIds] = await Promise.all([
     prisma.book.findMany({
       where: {
         userId: session.user.id,
@@ -29,14 +32,17 @@ export async function GET(req: NextRequest) {
       include: { progress: true },
     }),
     prisma.book.count({ where: { userId: session.user.id } }),
-    prisma.user.findUnique({ where: { id: session.user.id }, select: { plan: true } }),
+    // Ranked against the user's full book set, independent of the
+    // sort/favorite/limit filters above — a filtered query must not skew
+    // which books look locked.
+    getLockedBookIdsForPlan(session.user.id, plan),
   ]);
 
   return NextResponse.json({
-    books,
+    books: books.map((book) => ({ ...book, locked: lockedIds.has(book.id) })),
     totalCount,
-    plan: user?.plan ?? "FREE",
-    bookLimit: user?.plan === "PRO" ? null : FREE_PLAN_BOOK_LIMIT,
+    plan,
+    bookLimit: plan === "PRO" ? null : FREE_PLAN_BOOK_LIMIT,
   });
 }
 
@@ -52,8 +58,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
   }
 
-  const user = await prisma.user.findUnique({ where: { id: session.user.id }, select: { plan: true } });
-  if (user?.plan !== "PRO") {
+  const { plan } = await getEffectivePlan(session.user.id);
+  if (plan !== "PRO") {
     const bookCount = await prisma.book.count({ where: { userId: session.user.id } });
     if (bookCount >= FREE_PLAN_BOOK_LIMIT) {
       return NextResponse.json(

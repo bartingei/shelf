@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { supabaseAdmin } from "@/lib/supabase-admin";
+import { isBookLocked } from "@/lib/plan";
 
 // Proxies the PDF file from Supabase Storage so PDF.js can load it
 // without needing CORS configuration on the storage bucket.
@@ -15,6 +16,13 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   });
 
   if (!book) return NextResponse.json({ error: "Not found" }, { status: 404 });
+
+  if (await isBookLocked(session.user.id, id)) {
+    return NextResponse.json(
+      { error: "This book is locked. Upgrade to Shelf Pro to access it.", code: "BOOK_LOCKED" },
+      { status: 403 }
+    );
+  }
 
   // fileUrl is stored as the storage path (e.g. "userId/filename.pdf")
   const { data, error } = await supabaseAdmin.storage
