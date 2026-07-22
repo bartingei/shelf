@@ -41,6 +41,27 @@ export interface Book {
   isFavorite: boolean;
   createdAt: string;
   lastOpenedAt: string | null;
+  locked?: boolean;
+}
+
+export type SubscriptionPlanName = "MONTHLY" | "YEARLY";
+export type SubscriptionStatusName = "ACTIVE" | "EXPIRED";
+
+export interface Subscription {
+  plan: SubscriptionPlanName;
+  status: SubscriptionStatusName;
+  currentPeriodEnd: string;
+}
+
+export type NotificationType = "PAYMENT_SUCCESS" | "SUBSCRIPTION_EXPIRING_SOON" | "SUBSCRIPTION_EXPIRED";
+
+export interface Notification {
+  id: string;
+  type: NotificationType;
+  title: string;
+  message: string;
+  read: boolean;
+  createdAt: string;
 }
 
 export interface ReadingProgress {

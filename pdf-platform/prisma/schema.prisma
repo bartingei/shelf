@@ -52,6 +52,28 @@ enum Plan {
   PRO
 }
 
+enum SubscriptionPlan {
+  MONTHLY
+  YEARLY
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  EXPIRED
+}
+
+enum PaymentStatus {
+  PENDING
+  SUCCESS
+  FAILED
+}
+
+enum NotificationType {
+  PAYMENT_SUCCESS
+  SUBSCRIPTION_EXPIRING_SOON
+  SUBSCRIPTION_EXPIRED
+}
+
 model User {
   id            String   @id @default(cuid())
   email         String   @unique
@@ -64,16 +86,19 @@ model User {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
-  settings    UserSettings?
-  books       Book[]
-  collections Collection[]
-  bookmarks   Bookmark[]
-  notes       Note[]
-  highlights  Highlight[]
-  progress    ReadingProgress[]
-  sessions    ReadingSession[]
-  authSessions Session[]
-  accounts     Account[]
+  settings      UserSettings?
+  books         Book[]
+  collections   Collection[]
+  bookmarks     Bookmark[]
+  notes         Note[]
+  highlights    Highlight[]
+  progress      ReadingProgress[]
+  sessions      ReadingSession[]
+  authSessions  Session[]
+  accounts      Account[]
+  subscription  Subscription?
+  payments      Payment[]
+  notifications Notification[]
 }
 
 model UserSettings {
@@ -222,6 +247,76 @@ model ProcessingJob {
   book Book @relation(fields: [bookId], references: [id], onDelete: Cascade)
 
   @@index([status])
+}
+
+model Subscription {
+  id     String @id @default(cuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  plan               SubscriptionPlan
+  status             SubscriptionStatus @default(ACTIVE)
+  currentPeriodStart DateTime
+  currentPeriodEnd   DateTime
+
+  // Cron bookkeeping only — never read for access-control decisions. Reset
+  // to null on every renewal so the reminder can fire again ahead of the
+  // new expiry.
+  expiringSoonNotifiedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  payments Payment[]
+
+  @@index([status, currentPeriodEnd])
+}
+
+model Payment {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  subscriptionId String?
+  subscription   Subscription? @relation(fields: [subscriptionId], references: [id])
+
+  plan        SubscriptionPlan
+  amount      Int // whole KES — Daraja's Amount field takes no decimals
+  phoneNumber String // normalized 2547XXXXXXXX / 2541XXXXXXXX
+
+  status PaymentStatus @default(PENDING)
+
+  merchantRequestId  String?
+  checkoutRequestId  String? @unique
+  mpesaReceiptNumber String?
+  resultCode         Int?
+  resultDesc         String?
+  rawCallback        Json?
+
+  // Throttles the status-polling route's fallback calls to stkPushQuery.
+  lastQueriedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([status])
+}
+
+model Notification {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  type    NotificationType
+  title   String
+  message String
+  read    Boolean @default(false)
+
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@index([userId, read])
 }
 
 // ---------- Better Auth required tables ----------

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { Upload, LogOut } from "lucide-react";
+import { Upload, LogOut, Bell } from "lucide-react";
 import { signOut } from "@/lib/auth-client";
 import { cn } from "@/lib/utils";
 
@@ -23,6 +23,7 @@ export function TopNav({ onUpload, overHero = false }: TopNavProps) {
   const pathname = usePathname();
   const router = useRouter();
   const [scrolled, setScrolled] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 24);
@@ -30,6 +31,13 @@ export function TopNav({ onUpload, overHero = false }: TopNavProps) {
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
+
+  useEffect(() => {
+    fetch("/api/notifications?limit=1")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => data && setUnreadCount(data.unreadCount ?? 0))
+      .catch(() => {});
+  }, [pathname]);
 
   async function handleSignOut() {
     await signOut();
@@ -83,6 +91,18 @@ export function TopNav({ onUpload, overHero = false }: TopNavProps) {
               <Upload size={15} /> <span className="hidden sm:inline">Upload</span>
             </button>
           )}
+          <Link
+            href="/notifications"
+            title="Notifications"
+            className="relative flex h-9 w-9 items-center justify-center rounded-full text-muted transition-colors hover:bg-white/5 hover:text-foreground"
+          >
+            <Bell size={17} />
+            {unreadCount > 0 && (
+              <span className="absolute right-1 top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-gold px-1 text-[10px] font-bold text-black">
+                {unreadCount > 9 ? "9+" : unreadCount}
+              </span>
+            )}
+          </Link>
           <button
             onClick={handleSignOut}
             title="Sign out"

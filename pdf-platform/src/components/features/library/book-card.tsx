@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { Star, Play, MoreVertical } from "lucide-react";
+import { Star, Play, MoreVertical, Lock } from "lucide-react";
 import { BookDetailModal } from "./book-detail-modal";
 import type { Book } from "@/types";
 import { cn } from "@/lib/utils";
@@ -35,6 +35,7 @@ export function BookCard({ book, onFavoriteToggle, onDelete }: BookCardProps) {
 
   const progress = (currentBook as any).progress;
   const percent = progress?.percentComplete ?? 0;
+  const locked = currentBook.locked ?? false;
 
   return (
     <>
@@ -55,14 +56,26 @@ export function BookCard({ book, onFavoriteToggle, onDelete }: BookCardProps) {
             <img
               src={currentBook.coverUrl}
               alt={currentBook.title}
-              className="h-full w-full object-cover"
+              className={cn("h-full w-full object-cover", locked && "opacity-50 grayscale")}
             />
           ) : (
-            <div className="flex h-full w-full flex-col items-center justify-center gap-3 bg-gradient-to-br from-accent/30 via-accent/10 to-transparent p-4 text-center">
+            <div
+              className={cn(
+                "flex h-full w-full flex-col items-center justify-center gap-3 bg-gradient-to-br from-accent/30 via-accent/10 to-transparent p-4 text-center",
+                locked && "opacity-50 grayscale"
+              )}
+            >
               <span className="text-4xl">📖</span>
               <span className="line-clamp-3 text-xs font-medium leading-tight text-foreground/80">
                 {currentBook.title}
               </span>
+            </div>
+          )}
+
+          {/* Persistent lock badge — visible without hovering, matters on touch devices */}
+          {locked && (
+            <div className="absolute left-2 top-2 flex h-7 w-7 items-center justify-center rounded-full bg-black/60 backdrop-blur-sm">
+              <Lock size={12} className="text-white" />
             </div>
           )}
 
@@ -106,13 +119,23 @@ export function BookCard({ book, onFavoriteToggle, onDelete }: BookCardProps) {
               </div>
 
               {/* Bottom action */}
-              <Link
-                href={`/reader/${currentBook.id}`}
-                className="flex w-full items-center justify-center gap-2 rounded-lg bg-white py-2 text-xs font-semibold text-black hover:bg-white/90"
-              >
-                <Play size={12} fill="black" />
-                {percent > 0 ? "Continue" : "Read"}
-              </Link>
+              {locked ? (
+                <Link
+                  href="/upgrade"
+                  className="flex w-full items-center justify-center gap-2 rounded-lg bg-white py-2 text-xs font-semibold text-black hover:bg-white/90"
+                >
+                  <Lock size={12} />
+                  Upgrade to unlock
+                </Link>
+              ) : (
+                <Link
+                  href={`/reader/${currentBook.id}`}
+                  className="flex w-full items-center justify-center gap-2 rounded-lg bg-white py-2 text-xs font-semibold text-black hover:bg-white/90"
+                >
+                  <Play size={12} fill="black" />
+                  {percent > 0 ? "Continue" : "Read"}
+                </Link>
+              )}
             </div>
           )}
         </div>
