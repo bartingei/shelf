@@ -81,7 +81,7 @@ function Hero() {
       <div className="relative">
         <div className="relative overflow-hidden rounded-2xl">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={IMAGES.heroBook} alt="An open book in warm light" fetchPriority="high" decoding="async" className="h-[520px] w-full object-cover" />
+          <img src={IMAGES.heroBook} alt="An open book in warm light" fetchPriority="high" decoding="async" className="h-[280px] w-full object-cover sm:h-[380px] lg:h-[520px]" />
           <div className="absolute inset-0 bg-gradient-to-t from-background/60 via-transparent to-transparent" />
         </div>
 
