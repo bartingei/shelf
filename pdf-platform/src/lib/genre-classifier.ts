@@ -1,6 +1,13 @@
 import OpenAI from "openai";
 
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+// The SDK's default timeout is 10 minutes — far longer than a serverless
+// function is allowed to run. A slow (not erroring) OpenAI response would
+// hold the request open past the platform's own execution limit, which
+// kills the function without ever reaching the try/catch below, leaving
+// the client's fetch hanging indefinitely instead of getting the "OTHER"
+// fallback this was designed to guarantee. Bounding both the timeout and
+// retries keeps worst-case latency here small and predictable.
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY, timeout: 8000, maxRetries: 1 });
 
 const GENRES = [
   "FICTION",

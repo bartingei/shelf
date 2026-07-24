@@ -95,106 +95,154 @@ export function UploadModal({ userId, onClose, onSuccess }: UploadModalProps) {
     if (files.length === 0 || uploading) return;
     setUploading(true);
 
-    const pdfjsLib = await getPdfJs();
+    // Tracked locally rather than re-checking the `files` state at the end —
+    // this closure's `files` is a snapshot from when uploadAll() was called,
+    // so re-reading it after the loop would ignore every status update the
+    // loop itself made and `allDone` would never reflect what actually happened.
+    let allSucceeded = true;
 
-    for (let i = 0; i < files.length; i++) {
-      const item = files[i];
-      if (item.status === "done" || item.status === "error") continue;
+    try {
+      const pdfjsLib = await getPdfJs();
 
-      // Step 1: Extract metadata with PDF.js
-      setFiles((prev) =>
-        prev.map((f, idx) => (idx === i ? { ...f, status: "extracting" } : f))
-      );
-
-      let title = item.file.name.replace(/\.pdf$/i, "");
-      let author: string | undefined;
-      let pageCount: number | undefined;
-      let coverBlob: Blob | null = null;
-      let textSample = "";
-
-      try {
-        const arrayBuffer = await item.file.arrayBuffer();
-        const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-        const meta = await pdf.getMetadata().catch(() => null);
-        pageCount = pdf.numPages;
-        if (meta?.info) {
-          const info = meta.info as Record<string, string>;
-          if (info.Title?.trim()) title = info.Title.trim();
-          if (info.Author?.trim()) author = info.Author.trim();
+      for (let i = 0; i < files.length; i++) {
+        const item = files[i];
+        if (item.status === "done") continue;
+        if (item.status === "error") {
+          allSucceeded = false;
+          continue;
         }
-        coverBlob = await renderCoverThumbnail(pdf).catch(() => null);
-        textSample = await extractTextSample(pdf).catch(() => "");
-      } catch {
-        // metadata extraction failure is non-fatal — use filename as title
-      }
 
-      // Step 2: Upload file to Supabase Storage
-      setFiles((prev) =>
-        prev.map((f, idx) =>
-          idx === i ? { ...f, status: "uploading", title, author, pageCount } : f
-        )
-      );
-
-      const filePath = `${userId}/${Date.now()}.pdf`;
-
-  const formData = new FormData();
-  formData.append("file", item.file);
-  formData.append("filePath", filePath);
-
-  const uploadRes = await fetch("/api/upload", {
-    method: "POST",
-    body: formData,
-  });
-
-  if (!uploadRes.ok) {
-    const err = await uploadRes.json();
-    setFiles((prev) =>
-      prev.map((f, idx) =>
-        idx === i ? { ...f, status: "error", error: err.error || "Upload failed" } : f
-      )
-    );
-    continue;
-  }
-
-      // Step 3: Save book record to database
-      setFiles((prev) =>
-        prev.map((f, idx) => (idx === i ? { ...f, status: "saving" } : f))
-      );
-
-      const res = await fetch("/api/books", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title, author, fileUrl: filePath, pageCount, textSample }),
-      });
-
-      if (!res.ok) {
-        const err = await res.json();
+        // Step 1: Extract metadata with PDF.js
         setFiles((prev) =>
-          prev.map((f, idx) =>
-            idx === i ? { ...f, status: "error", error: err.error || "Save failed" } : f
-          )
+          prev.map((f, idx) => (idx === i ? { ...f, status: "extracting" } : f))
         );
-        continue;
+
+        let title = item.file.name.replace(/\.pdf$/i, "");
+        let author: string | undefined;
+        let pageCount: number | undefined;
+        let coverBlob: Blob | null = null;
+        let textSample = "";
+
+        try {
+          const arrayBuffer = await item.file.arrayBuffer();
+          const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+          const meta = await pdf.getMetadata().catch(() => null);
+          pageCount = pdf.numPages;
+          if (meta?.info) {
+            const info = meta.info as Record<string, string>;
+            if (info.Title?.trim()) title = info.Title.trim();
+            if (info.Author?.trim()) author = info.Author.trim();
+          }
+          coverBlob = await renderCoverThumbnail(pdf).catch(() => null);
+          textSample = await extractTextSample(pdf).catch(() => "");
+        } catch {
+          // metadata extraction failure is non-fatal — use filename as title
+        }
+
+        // Steps 2-4 (upload, save, cover) can fail in ways that aren't plain
+        // HTTP error responses — a dropped connection, or a platform timeout
+        // page that isn't valid JSON — which would otherwise throw out of
+        // this whole function, leaving every later file (and the "uploading"
+        // flag disabling the modal's buttons) stuck forever with no error
+        // shown. Catch per-file so one bad upload can't freeze the rest.
+        try {
+          // Step 2: Upload file to Supabase Storage
+          setFiles((prev) =>
+            prev.map((f, idx) =>
+              idx === i ? { ...f, status: "uploading", title, author, pageCount } : f
+            )
+          );
+
+          const filePath = `${userId}/${Date.now()}.pdf`;
+
+          const formData = new FormData();
+          formData.append("file", item.file);
+          formData.append("filePath", filePath);
+
+          const uploadRes = await fetch("/api/upload", {
+            method: "POST",
+            body: formData,
+          });
+
+          if (!uploadRes.ok) {
+            const err = await uploadRes.json().catch(() => null);
+            setFiles((prev) =>
+              prev.map((f, idx) =>
+                idx === i ? { ...f, status: "error", error: err?.error || "Upload failed" } : f
+              )
+            );
+            allSucceeded = false;
+            continue;
+          }
+
+          // Step 3: Save book record to database
+          setFiles((prev) =>
+            prev.map((f, idx) => (idx === i ? { ...f, status: "saving" } : f))
+          );
+
+          // The server-side save can stall (e.g. a slow AI classification
+          // call) — bound how long we wait so the UI can surface an error
+          // instead of sitting on "Saving..." forever.
+          const controller = new AbortController();
+          const timeout = setTimeout(() => controller.abort(), 30000);
+          let res: Response;
+          try {
+            res = await fetch("/api/books", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ title, author, fileUrl: filePath, pageCount, textSample }),
+              signal: controller.signal,
+            });
+          } finally {
+            clearTimeout(timeout);
+          }
+
+          if (!res.ok) {
+            const err = await res.json().catch(() => null);
+            setFiles((prev) =>
+              prev.map((f, idx) =>
+                idx === i ? { ...f, status: "error", error: err?.error || "Save failed" } : f
+              )
+            );
+            allSucceeded = false;
+            continue;
+          }
+
+          const { book } = await res.json();
+
+          // Step 4: Set the extracted cover thumbnail (best-effort — a missing cover isn't fatal)
+          if (coverBlob) {
+            const coverForm = new FormData();
+            coverForm.append("file", coverBlob, "cover.jpg");
+            await fetch(`/api/books/${book.id}/cover`, { method: "POST", body: coverForm }).catch(() => null);
+          }
+
+          setFiles((prev) =>
+            prev.map((f, idx) => (idx === i ? { ...f, status: "done" } : f))
+          );
+          toast(`"${title}" has been added to your library`);
+        } catch (err) {
+          setFiles((prev) =>
+            prev.map((f, idx) =>
+              idx === i
+                ? {
+                    ...f,
+                    status: "error",
+                    error: err instanceof DOMException && err.name === "AbortError"
+                      ? "Timed out — please try again"
+                      : "Something went wrong — please try again",
+                  }
+                : f
+            )
+          );
+          allSucceeded = false;
+        }
       }
-
-      const { book } = await res.json();
-
-      // Step 4: Set the extracted cover thumbnail (best-effort — a missing cover isn't fatal)
-      if (coverBlob) {
-        const coverForm = new FormData();
-        coverForm.append("file", coverBlob, "cover.jpg");
-        await fetch(`/api/books/${book.id}/cover`, { method: "POST", body: coverForm }).catch(() => null);
-      }
-
-      setFiles((prev) =>
-        prev.map((f, idx) => (idx === i ? { ...f, status: "done" } : f))
-      );
-      toast(`"${title}" has been added to your library`);
+    } finally {
+      setUploading(false);
     }
 
-    setUploading(false);
-    const allDone = files.every((f) => f.status === "done");
-    if (allDone) {
+    if (allSucceeded) {
       setTimeout(() => {
         onSuccess();
         onClose();
