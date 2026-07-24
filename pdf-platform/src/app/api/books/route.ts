@@ -5,6 +5,11 @@ import { classifyGenre } from "@/lib/genre-classifier";
 import { FREE_PLAN_BOOK_LIMIT } from "@/lib/constants";
 import { getEffectivePlan, getLockedBookIdsForPlan } from "@/lib/plan";
 
+// POST classifies genre via OpenAI (bounded to 8s + 1 retry, see
+// lib/genre-classifier.ts) on top of a few DB round trips — default
+// platform function timeouts leave too little margin for that combined.
+export const maxDuration = 30;
+
 // GET /api/books?sort=recent|lastRead&favorite=true&limit=10
 export async function GET(req: NextRequest) {
   const session = await auth.api.getSession({ headers: req.headers });
