@@ -1,23 +1,14 @@
-import type { Subscription } from "@prisma/client";
 import { prisma } from "./prisma";
 import { FREE_PLAN_BOOK_LIMIT } from "./constants";
 
-export function isSubscriptionActive(
-  subscription: Pick<Subscription, "status" | "currentPeriodEnd"> | null
-): boolean {
-  if (!subscription) return false;
-  return subscription.status === "ACTIVE" && subscription.currentPeriodEnd.getTime() > Date.now();
-}
-
-// Single source of truth for "is this user effectively Pro right now". Always
-// re-derives from Subscription.currentPeriodEnd rather than trusting the
-// cached User.plan column, so access control never depends on the cron sweep
-// (/api/cron/subscriptions) having run yet.
+// Payments/subscriptions (Shelf Pro) is deferred to a later version — this
+// always resolves FREE rather than touching the Subscription table, which
+// is the shape everything downstream (book limits, locking) already expects.
 export async function getEffectivePlan(
   userId: string
-): Promise<{ plan: "FREE" | "PRO"; subscription: Subscription | null }> {
-  const subscription = await prisma.subscription.findUnique({ where: { userId } });
-  return { plan: isSubscriptionActive(subscription) ? "PRO" : "FREE", subscription };
+): Promise<{ plan: "FREE" | "PRO"; subscription: null }> {
+  void userId;
+  return { plan: "FREE", subscription: null };
 }
 
 // Ranks the user's full book set by createdAt ascending and locks everything
