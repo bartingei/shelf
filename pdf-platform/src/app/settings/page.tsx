@@ -16,7 +16,7 @@ export default async function SettingsPage() {
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session?.user) redirect("/login");
 
-  const [settings, { plan, subscription }, bookCount] = await Promise.all([
+  const [settings, { plan }, bookCount] = await Promise.all([
     prisma.userSettings.findUnique({ where: { userId: session.user.id } }),
     getEffectivePlan(session.user.id),
     prisma.book.count({ where: { userId: session.user.id } }),
@@ -31,7 +31,7 @@ export default async function SettingsPage() {
       plan={plan}
       bookCount={bookCount}
       bookLimit={plan === "PRO" ? null : FREE_PLAN_BOOK_LIMIT}
-      subscriptionExpiresAt={plan === "PRO" ? subscription?.currentPeriodEnd.toISOString() ?? null : null}
+      subscriptionExpiresAt={null}
     />
   );
 }
