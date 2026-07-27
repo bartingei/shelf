@@ -3,6 +3,12 @@ import { auth } from "@/lib/auth";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { MAX_UPLOAD_BYTES, formatBytes } from "@/lib/constants";
 
+// Files up to 100MB (see MAX_UPLOAD_BYTES) can take longer to buffer and
+// push to Supabase Storage than the platform's default function timeout —
+// the upload can fully succeed server-side after the client has already
+// been told it failed. 60s is the max configurable on Vercel's Hobby plan.
+export const maxDuration = 60;
+
 export async function POST(req: NextRequest) {
   const session = await auth.api.getSession({ headers: req.headers });
   if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
