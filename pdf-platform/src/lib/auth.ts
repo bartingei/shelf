@@ -1,7 +1,9 @@
 import { betterAuth } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
+import { APIError, createAuthMiddleware } from "better-auth/api";
 import { prisma } from "./prisma";
 import { sendEmail } from "./resend";
+import { isDisposableEmail } from "./disposable-email";
 
 // Shared wrapper so every transactional email shares the same shell
 // (logo, spacing) instead of duplicating inline styles per email.
@@ -83,6 +85,20 @@ export const auth = betterAuth({
       clientId: process.env.GOOGLE_CLIENT_ID || "",
       clientSecret: process.env.GOOGLE_CLIENT_SECRET || "",
     },
+  },
+  hooks: {
+    // Only email/password sign-up needs this — Google sign-in requires
+    // actually owning that Google account, which no disposable-mail
+    // service provides OAuth for.
+    before: createAuthMiddleware(async (ctx) => {
+      if (ctx.path !== "/sign-up/email") return;
+      const email = ctx.body?.email as string | undefined;
+      if (email && isDisposableEmail(email)) {
+        throw new APIError("BAD_REQUEST", {
+          message: "Please use a permanent email address — disposable/temporary email providers aren't accepted.",
+        });
+      }
+    }),
   },
   secret: process.env.BETTER_AUTH_SECRET,
   baseURL: process.env.BETTER_AUTH_URL,
