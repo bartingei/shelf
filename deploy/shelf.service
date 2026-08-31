@@ -1,0 +1,34 @@
+# Shelf — Next.js production server, fronted by nginx.
+# Install to /etc/systemd/system/shelf.service (deploy/setup-ec2.sh does this).
+[Unit]
+Description=Shelf (Next.js)
+Documentation=https://github.com/bartingei/shelf
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=ubuntu
+Group=ubuntu
+WorkingDirectory=/home/ubuntu/shelf/pdf-platform
+
+# Secrets are NOT listed here — Next.js loads pdf-platform/.env itself, so that
+# file stays the single source of truth for both the server and Prisma.
+Environment=NODE_ENV=production
+
+# Bind to loopback only: nginx is the sole public entry point, so the Node
+# process is never reachable directly on :3000 even if the security group is
+# opened up later.
+ExecStart=/usr/bin/npm run start -- --hostname 127.0.0.1 --port 3000
+
+Restart=always
+RestartSec=5
+KillSignal=SIGINT
+TimeoutStopSec=30
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=shelf
+
+[Install]
+WantedBy=multi-user.target
