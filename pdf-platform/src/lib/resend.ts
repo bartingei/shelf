@@ -18,8 +18,14 @@ export const EMAIL_FROM = "Shelf <onboarding@resend.dev>";
 // exists, e.g. on password reset).
 export async function sendEmail({ to, subject, html }: { to: string; subject: string; html: string }) {
   try {
-    const { error } = await resend.emails.send({ from: EMAIL_FROM, to, subject, html });
-    if (error) console.error(`[resend] Failed to send "${subject}" to ${to}:`, error);
+    const { data, error } = await resend.emails.send({ from: EMAIL_FROM, to, subject, html });
+    if (error) {
+      console.error(`[resend] Failed to send "${subject}" to ${to}:`, error);
+    } else {
+      // Success is otherwise invisible — without this, "delivered" and
+      // "never attempted" look identical in the logs.
+      console.log(`[resend] Sent "${subject}" to ${to} (id: ${data?.id})`);
+    }
   } catch (err) {
     console.error(`[resend] Failed to send "${subject}" to ${to}:`, err);
   }

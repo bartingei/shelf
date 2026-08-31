@@ -40,6 +40,7 @@ export const auth = betterAuth({
     // as verified, which it does for standard Gmail/Workspace accounts.
     requireEmailVerification: true,
     sendResetPassword: async ({ user, url }) => {
+      console.log(`[auth] Dispatching password reset email to ${user.email}`);
       await sendEmail({
         to: user.email,
         subject: "Reset your Shelf password",
@@ -62,6 +63,7 @@ export const auth = betterAuth({
     sendOnSignUp: true,
     autoSignInAfterVerification: true,
     sendVerificationEmail: async ({ user, url }) => {
+      console.log(`[auth] Dispatching verification email to ${user.email}`);
       await sendEmail({
         to: user.email,
         subject: "Verify your Shelf account",
@@ -99,6 +101,17 @@ export const auth = betterAuth({
         });
       }
     }),
+  },
+  // Better Auth's default for /send-verification-email is 3 requests per 60s
+  // PER IP, shared between the "Resend" button and the automatic email
+  // sendOnSignUp fires — tight enough that a handful of manual retries (e.g.
+  // checking spam, trying again) silently exhausts it, dropping the send
+  // before it ever reaches the email provider. Loosened, not removed —
+  // still bounded against abuse.
+  rateLimit: {
+    customRules: {
+      "/send-verification-email": { window: 60, max: 10 },
+    },
   },
   secret: process.env.BETTER_AUTH_SECRET,
   baseURL: process.env.BETTER_AUTH_URL,
