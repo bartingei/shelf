@@ -5,8 +5,10 @@ import Link from "next/link";
 import { motion } from "framer-motion";
 import { signUp, signIn, sendVerificationEmail } from "@/lib/auth-client";
 import { IMAGES } from "@/lib/images";
+import { useToast } from "@/components/ui/toast";
 
 export default function SignupPage() {
+  const { toast } = useToast();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -14,6 +16,7 @@ export default function SignupPage() {
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [awaitingVerification, setAwaitingVerification] = useState(false);
+  const [resending, setResending] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -31,6 +34,24 @@ export default function SignupPage() {
     // session — prompt the user to check their inbox instead of routing
     // straight into the app.
     setAwaitingVerification(true);
+  }
+
+  async function handleResend() {
+    if (resending) return;
+    setResending(true);
+    const { error: resendError } = await sendVerificationEmail({ email, callbackURL: "/library" });
+    setResending(false);
+
+    if (resendError) {
+      toast(
+        resendError.status === 429
+          ? "Too many requests — please wait a bit before trying again."
+          : resendError.message || "Could not resend the verification email.",
+        { variant: "error" }
+      );
+      return;
+    }
+    toast("Verification email sent — check your inbox.");
   }
 
   async function handleGoogleSignUp() {
@@ -61,10 +82,11 @@ export default function SignupPage() {
               </p>
               <button
                 type="button"
-                onClick={() => sendVerificationEmail({ email, callbackURL: "/library" })}
-                className="mt-6 text-sm text-gold hover:underline"
+                onClick={handleResend}
+                disabled={resending}
+                className="mt-6 text-sm text-gold hover:underline disabled:opacity-50"
               >
-                Didn't get it? Resend
+                {resending ? "Sending..." : "Didn't get it? Resend"}
               </button>
             </>
           ) : (

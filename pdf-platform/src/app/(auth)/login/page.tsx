@@ -16,6 +16,7 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [resent, setResent] = useState(false);
+  const [resending, setResending] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -39,7 +40,20 @@ export default function LoginPage() {
   }
 
   async function handleResend() {
-    await sendVerificationEmail({ email, callbackURL: "/library" });
+    if (resending) return;
+    setResent(false);
+    setResending(true);
+    const { error: resendError } = await sendVerificationEmail({ email, callbackURL: "/library" });
+    setResending(false);
+
+    if (resendError) {
+      setError(
+        resendError.status === 429
+          ? "Too many requests — please wait a bit before trying again."
+          : resendError.message || "Could not resend the verification email."
+      );
+      return;
+    }
     setResent(true);
   }
 
@@ -94,8 +108,13 @@ export default function LoginPage() {
           {needsVerification && (
             <p className="mt-6 rounded-lg bg-gold/10 px-3 py-2 text-xs text-gold">
               Your email isn't verified yet. Check your inbox for the link, or{" "}
-              <button type="button" onClick={handleResend} className="font-semibold underline underline-offset-2">
-                resend it
+              <button
+                type="button"
+                onClick={handleResend}
+                disabled={resending}
+                className="font-semibold underline underline-offset-2 disabled:opacity-50"
+              >
+                {resending ? "sending..." : "resend it"}
               </button>
               {resent && " — sent!"}
             </p>
