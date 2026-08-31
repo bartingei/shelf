@@ -47,6 +47,11 @@ nano ~/shelf/pdf-platform/.env
 bash ~/shelf/deploy/deploy.sh
 ```
 
+`~/shelf` is just a suggested location — `setup-ec2.sh` detects the checkout
+it's actually being run from and points the systemd service at that path, so
+cloning to a different directory (`~/apps/shelf`, `/opt/shelf`, etc.) works
+the same way. Just substitute your actual path in the commands above.
+
 Then open `http://<your-public-ip>` in a browser.
 
 ### What goes in `.env`

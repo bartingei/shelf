@@ -10,9 +10,20 @@ set -euo pipefail
 
 NODE_MAJOR=22
 APP_USER=ubuntu
-APP_DIR="/home/${APP_USER}/shelf"
 REPO_URL="https://github.com/bartingei/shelf.git"
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Use the checkout this script is actually being run from (its parent dir) —
+# don't assume ~/shelf. Running via `bash /some/path/deploy/setup-ec2.sh`
+# means the real app lives at /some/path, whatever that is. Only fall back to
+# cloning a fresh copy at ~/shelf if this script isn't part of a real clone
+# (e.g. downloaded standalone).
+CANDIDATE_APP_DIR="$(cd "$HERE/.." && pwd)"
+if [[ -d "$CANDIDATE_APP_DIR/.git" ]]; then
+  APP_DIR="$CANDIDATE_APP_DIR"
+else
+  APP_DIR="/home/${APP_USER}/shelf"
+fi
 
 if [[ $EUID -ne 0 ]]; then
   echo "This script needs root. Re-run: sudo bash deploy/setup-ec2.sh" >&2
@@ -75,7 +86,12 @@ fi
 
 # --- systemd ---------------------------------------------------------------
 say "Installing the shelf systemd service"
-install -m 644 "${HERE}/shelf.service" /etc/systemd/system/shelf.service
+# The checked-in unit file's WorkingDirectory assumes ~/shelf; rewrite it to
+# match APP_DIR so the service actually points at this checkout, wherever it
+# was cloned.
+sed "s|^WorkingDirectory=.*|WorkingDirectory=${APP_DIR}/pdf-platform|" \
+  "${HERE}/shelf.service" > /etc/systemd/system/shelf.service
+chmod 644 /etc/systemd/system/shelf.service
 systemctl daemon-reload
 systemctl enable shelf >/dev/null
 
