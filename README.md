@@ -131,6 +131,20 @@ pdf-platform/
     mvp-spec.md            # original feature spec + schema rationale
 ```
 
+## Deployment
+
+To run Shelf on your own Ubuntu server (EC2 or similar), see
+[`deploy/`](deploy/) — it has a provisioning script, a deploy script, a systemd
+unit, and an nginx config, plus a step-by-step guide in
+[`deploy/README.md`](deploy/README.md).
+
+```bash
+git clone https://github.com/bartingei/shelf.git ~/shelf
+sudo bash ~/shelf/deploy/setup-ec2.sh    # Node, nginx, swap, systemd
+nano ~/shelf/pdf-platform/.env           # fill in secrets
+bash ~/shelf/deploy/deploy.sh            # build, migrate, start
+```
+
 ## Notes
 
 - Genre classification and the AI Explain/Summarize tools call OpenAI on your behalf — if
